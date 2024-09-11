@@ -40,3 +40,8 @@ impl Default for Config {
         }
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct State {
+    pub token: Option<String>,
+}

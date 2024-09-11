@@ -11,7 +11,7 @@ rand = "0.8.5"
 reqwest = "0.12.7"
 rss = "2.0.9"
 rust-embed = "8.5.0"
-salvo = { version = "0.71.1", features = ["affix-state", "anyhow"] }
+salvo = { version = "0.71.1", features = ["affix-state", "anyhow", "cors"] }
 serde = { version = "1.0.210", features = ["derive"] }
 serde_json = "1.0.128"
 sha2 = "0.10.8"

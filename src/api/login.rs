@@ -1,19 +1,41 @@
-use crate::state::Config;
-use anyhow::{Context, Result};
-use salvo::prelude::*;
+use crate::utils::rand_str;
 
-use super::{ApiResponse, Code};
+use super::*;
+use salvo::prelude::*;
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize)]
+struct Resp {
+    pub token: String,
+}
+
+#[derive(Deserialize)]
+struct ReqData {
+    username: String,
+    password: String,
+}
 
 #[handler]
-async fn login(depot: &mut Depot, req: &mut Request) -> Result<ApiResponse<Option<()>>> {
-    let config = depot.obtain::<Config>().ok().context("")?;
-    let username = req.form::<String>("username").await.context("Username")?;
-    let password = req.form::<String>("password").await.context("Password")?;
+pub async fn login(
+    depot: &mut Depot,
+    req: &mut Request,
+) -> Result<ApiResponse<Option<Resp>>, Error> {
+    let config = depot.obtain::<Config>().ok().context("")?.read().await;
+    let json: ReqData = req.parse_json().await?;
+    let token = rand_str(16);
+    {
+        let mut state = depot.obtain::<State>().ok().context("")?.write().await;
+        state.token = Some(token.clone());
+    }
     Ok(
-        if config.password == password && config.username == username {
-            ApiResponse::new(Code::Success, None, "")
+        if config.password == json.password && config.username == json.username {
+            ApiResponse::new(Code::Success, Some(Resp { token }), "")
         } else {
-            ApiResponse::new(Code::AuthenticationError, None, "")
+            ApiResponse::new(
+                Code::AuthenticationError,
+                None,
+                "Username or password is incorrect",
+            )
         },
     )
 }

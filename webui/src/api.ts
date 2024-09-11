@@ -1,6 +1,6 @@
-import "axios";
-import { Axios } from "axios";
+import axios, { Axios, Method } from "axios";
 import { Sha256 } from "@aws-crypto/sha256-browser";
+import { bytesToHex } from "./utils";
 
 type ApiResponse = {
   code: number;
@@ -8,20 +8,31 @@ type ApiResponse = {
   data: any;
 };
 
-class Api {
+export class Api {
   baseUrl: string;
   axios: Axios;
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
     this.axios = new Axios({
-      baseURL: baseUrl,
+      baseURL: this.baseUrl,
+      transformRequest: axios.defaults.transformRequest,
+      transformResponse: axios.defaults.transformResponse,
     });
   }
 
-  async reqBase(path: string, data: any): Promise<ApiResponse> {
-    let resp = await this.axios.post(path, data);
+  async reqBase(
+    path: string,
+    data: { [key: string]: string },
+    method: Method = "post"
+  ): Promise<ApiResponse> {
+    console.log(data);
+    let resp = await this.axios.request({
+      method: method,
+      url: path,
+      data: data,
+    });
     if (resp.data.code === 200) {
-      return resp.data.data.token;
+      return resp.data;
     } else {
       throw new Error(resp.data.msg);
     }
@@ -33,8 +44,10 @@ class Api {
     return (
       await this.reqBase("login", {
         username: username,
-        password: (await hash.digest()).toString(),
+        password: bytesToHex(await hash.digest()).toUpperCase(),
       })
     ).data.token;
   }
 }
+
+export const api = new Api("http://localhost:8001/api");

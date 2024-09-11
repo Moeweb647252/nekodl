@@ -1,6 +1,10 @@
 use clap::Parser;
+use salvo::cors::{AllowCredentials, AllowHeaders, Cors};
+use salvo::http::Method;
 use salvo::prelude::*;
-use state::Config;
+use state::{Config, State};
+use std::sync::Arc;
+use tokio::{fs::write, sync::RwLock};
 use utils::{rand_str, sha256};
 
 mod api;
@@ -21,6 +25,7 @@ struct App {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt().init();
+
     let app = App::parse();
 
     let mut config = if let Some(conf_path) = app.config {
@@ -29,18 +34,30 @@ async fn main() -> anyhow::Result<()> {
         let rand_pw = rand_str(8);
         let sha_256_pw = sha256(&rand_pw);
         println!("Default account: username: admin, password: {}", rand_pw);
-        Config::default().update_password(sha_256_pw)
+        let config = Config::default().update_password(sha_256_pw);
+        write("./config.json", serde_json::to_string(&config)?).await?;
+        config
     };
+
     if let Some(bind_addr) = app.bind {
         config = config.update_bind_addr(bind_addr)
     }
+
+    let state = State { token: None };
+
     let sock = TcpListener::new("[::]:8001").bind().await;
-    Server::new(sock)
-        .serve(
-            Router::new()
-                .hoop(affix_state::inject(config))
-                .push(Router::with_path("/api").append(&mut api::routes())),
-        )
-        .await;
+    let router = Router::new()
+        .hoop(affix_state::inject(Arc::new(RwLock::new(config))))
+        .hoop(affix_state::inject(Arc::new(RwLock::new(state))))
+        .push(Router::with_path("/api").append(&mut api::routes()));
+    let service = Service::new(router).hoop(
+        Cors::new()
+            .allow_origin("*")
+            .allow_methods(vec![Method::GET, Method::POST])
+            .allow_credentials(AllowCredentials::judge(|_, _, _| true))
+            .allow_headers(AllowHeaders::any())
+            .into_handler(),
+    );
+    Server::new(sock).serve(service).await;
     Ok(())
 }

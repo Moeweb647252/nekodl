@@ -6,16 +6,30 @@ import {
   LockOutlined,
   EyeInvisibleOutlined,
 } from "@ant-design/icons-vue";
+import { useStore } from "../store";
+import { useRouter } from "vue-router";
+import { api } from "../api";
+import { errNotif } from "../utils";
 
+const router = useRouter();
+const store = useStore();
 const password = ref("");
 const username = ref("");
 const pwdInpTyp = ref(true);
 
 const togglePwd = () => {
   pwdInpTyp.value = !pwdInpTyp.value;
-};
+};  
 
-const login = () => {};
+const login = () => {
+  api
+    .login(username.value, password.value)
+    .then((token) => {
+      store.setToken(token);
+      router.push({ path: "/" });
+    })
+    .catch(errNotif);
+};
 </script>
 
 <template>
