@@ -4,11 +4,14 @@ use serde::{Deserialize, Serialize};
 use std::{fs::read_to_string, path::PathBuf, sync::Arc};
 use tokio::sync::RwLock;
 
+use crate::rss::Rss;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub bind_address: String,
     pub password: String,
     pub username: String,
+    pub token: Option<String>,
 }
 
 impl Config {
@@ -47,6 +50,7 @@ impl Default for Config {
             bind_address: "[::]:8001".to_owned(),
             username: "admin".to_owned(),
             password: "".to_owned(),
+            ..Default::default()
         }
     }
 }
@@ -64,4 +68,9 @@ impl State {
             line!()
         ))?)
     }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct DataBase {
+    pub rss: Vec<Rss>,
 }

@@ -1,17 +1,22 @@
 use anyhow::anyhow;
 use salvo::{async_trait, Depot, FlowCtrl, Handler, Request, Response, Router, Writer};
 use serde::Serialize;
-use std::{fmt::Display, sync::Arc};
-use tokio::sync::RwLock;
+use std::fmt::Display;
 use tracing::error;
 
 use crate::state::{Config, State};
 
+mod add_rss_sub;
 mod add_torrent_task;
 mod login;
 
 pub fn routes() -> Vec<Router> {
-    vec![Router::with_path("login").post(login::login)]
+    vec![
+        Router::with_path("login").post(login::login),
+        Router::with_path("add_torrent")
+            .hoop(ApiHandler)
+            .post(add_torrent_task::add_torrent_task),
+    ]
 }
 
 #[derive(Debug, Serialize)]
@@ -31,6 +36,10 @@ impl<T: Serialize> ApiResponse<T> {
             data,
             msg: msg.to_owned(),
         }
+    }
+
+    pub fn ok(data: T) -> Self {
+        Self::new(Code::Success, data, "Success")
     }
 }
 

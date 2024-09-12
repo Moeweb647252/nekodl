@@ -1,10 +1,42 @@
+use std::sync::Arc;
+
 use anyhow::Result;
-use rss::Channel;
+use rss::{Channel, Item};
+use serde::{Deserialize, Serialize};
+use tokio::sync::RwLock;
+
+use crate::state::{Config, DataBase};
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct RssItem {
+    title: String,
+    link: String,
+    description: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Rss {
+    url: String,
+    title: String,
+    description: String,
+    items: Vec<RssItem>,
+    update_time: std::time::SystemTime,
+    update_interval: std::time::Duration,
+}
 
 pub async fn fetch_rss(link: &str) -> Result<Channel> {
     let client = reqwest::Client::new();
     let content = client.get(link).send().await?.bytes().await?;
     Ok(Channel::read_from(&content[..])?)
+}
+
+pub async fn rss_task(db: Arc<RwLock<DataBase>>) {
+    loop {
+        let rsses = { db.read().await.rss.clone() };
+        for rss in rsses {
+            if rss.update_time.elapsed().unwrap() > rss.update_interval {}
+        }
+    }
 }
 
 #[cfg(test)]

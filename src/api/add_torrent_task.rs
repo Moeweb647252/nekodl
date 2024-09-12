@@ -1,4 +1,5 @@
 use super::*;
+use base64::prelude::*;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -11,6 +12,9 @@ struct ReqData {
 pub async fn add_torrent_task(
     depot: &mut Depot,
     req: &mut Request,
-) -> Result<ApiResponse<Option<()>>, Error> {
+) -> Result<ApiResponse<()>, Error> {
+    let data: ReqData = req.parse_json().await?;
+    let bt_data = BASE64_STANDARD.decode(data.bt_data)?;
+
     todo!()
 }
