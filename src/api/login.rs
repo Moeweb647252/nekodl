@@ -20,11 +20,11 @@ pub async fn login(
     depot: &mut Depot,
     req: &mut Request,
 ) -> Result<ApiResponse<Option<Resp>>, Error> {
-    let config = depot.obtain::<Config>().ok().context("")?.read().await;
+    let config = Config::borrow_from(depot)?.read().await;
     let json: ReqData = req.parse_json().await?;
     let token = rand_str(16);
     {
-        let mut state = depot.obtain::<State>().ok().context("")?.write().await;
+        let mut state = State::borrow_from(depot)?.write().await;
         state.token = Some(token.clone());
     }
     Ok(

@@ -158,6 +158,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "aria2-ws",
+ "base64 0.22.1",
  "clap",
  "rand",
  "reqwest",

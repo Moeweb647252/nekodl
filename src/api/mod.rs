@@ -1,14 +1,13 @@
 use anyhow::anyhow;
-use salvo::{async_trait, Depot, Request, Response, Router, Writer};
+use salvo::{async_trait, Depot, FlowCtrl, Handler, Request, Response, Router, Writer};
 use serde::Serialize;
 use std::{fmt::Display, sync::Arc};
 use tokio::sync::RwLock;
 use tracing::error;
 
-type Config = Arc<RwLock<crate::state::Config>>;
-type State = Arc<RwLock<crate::state::State>>;
+use crate::state::{Config, State};
 
-mod add_bt_task;
+mod add_torrent_task;
 mod login;
 
 pub fn routes() -> Vec<Router> {
@@ -107,5 +106,52 @@ impl Writer for Error {
                 }
             },
         );
+    }
+}
+
+struct ApiHandler;
+
+#[async_trait]
+impl Handler for ApiHandler {
+    async fn handle(
+        &self,
+        req: &mut Request,
+        depot: &mut Depot,
+        res: &mut Response,
+        ctrl: &mut FlowCtrl,
+    ) {
+        let state = match State::borrow_from(&depot) {
+            Ok(state) => state.clone(),
+            Err(err) => {
+                Error::from(err).write(req, depot, res).await;
+                ctrl.skip_rest();
+                return;
+            }
+        };
+
+        let token = req
+            .headers()
+            .get("Token")
+            .map(|v| v.to_str().unwrap_or(""))
+            .unwrap_or("");
+        if token
+            != match &state.read().await.token {
+                Some(token) => token,
+                None => {
+                    Error::from(anyhow!("Missing token"))
+                        .write(req, depot, res)
+                        .await;
+                    ctrl.skip_rest();
+                    return;
+                }
+            }
+        {
+            Error::from(anyhow!("Invalid token"))
+                .write(req, depot, res)
+                .await;
+            ctrl.skip_rest();
+        } else {
+            ctrl.call_next(req, depot, res).await;
+        }
     }
 }

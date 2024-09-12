@@ -1,6 +1,8 @@
-use anyhow::{Ok, Result};
+use anyhow::{Context, Ok, Result};
+use salvo::Depot;
 use serde::{Deserialize, Serialize};
-use std::{fs::read_to_string, path::PathBuf};
+use std::{fs::read_to_string, path::PathBuf, sync::Arc};
+use tokio::sync::RwLock;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
@@ -29,6 +31,14 @@ impl Config {
             ..self
         }
     }
+
+    pub fn borrow_from(depot: &Depot) -> anyhow::Result<&Arc<RwLock<Self>>> {
+        Ok(depot.obtain::<Arc<RwLock<Self>>>().ok().context(format!(
+            "Internal Error: file: {},lLine: {}",
+            file!(),
+            line!()
+        ))?)
+    }
 }
 
 impl Default for Config {
@@ -44,4 +54,14 @@ impl Default for Config {
 #[derive(Debug, Clone)]
 pub struct State {
     pub token: Option<String>,
+}
+
+impl State {
+    pub fn borrow_from(depot: &Depot) -> anyhow::Result<&Arc<RwLock<Self>>> {
+        Ok(depot.obtain::<Arc<RwLock<Self>>>().ok().context(format!(
+            "Internal Error: file: {},lLine: {}",
+            file!(),
+            line!()
+        ))?)
+    }
 }
