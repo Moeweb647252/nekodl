@@ -1,5 +1,5 @@
 use clap::Parser;
-use salvo::cors::{AllowCredentials, AllowHeaders, Cors};
+use salvo::cors::{AllowCredentials, AllowHeaders, AllowMethods, Cors};
 use salvo::http::Method;
 use salvo::prelude::*;
 use state::{Config, State};
@@ -53,7 +53,7 @@ async fn main() -> anyhow::Result<()> {
     let service = Service::new(router).hoop(
         Cors::new()
             .allow_origin("*")
-            .allow_methods(vec![Method::GET, Method::POST])
+            .allow_methods(AllowMethods::any())
             .allow_credentials(AllowCredentials::judge(|_, _, _| true))
             .allow_headers(AllowHeaders::any())
             .into_handler(),
