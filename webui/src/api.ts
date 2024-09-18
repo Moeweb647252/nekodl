@@ -49,8 +49,16 @@ export class Api {
     ).data.token;
   }
 
-  async add_new_rss(name: string, url: string): Promise<ApiResponse> {
-    return await this.reqBase("add_new_rss", { name: name, url: url });
+  async add_new_rss(url: string): Promise<ApiResponse> {
+    return await this.reqBase("add_new_rss", { url: url });
+  }
+
+  async get_rss_list(): Promise<ApiResponse> {
+    return await this.reqBase("get_rss_list", {}, "get");
+  }
+
+  async authorize(): Promise<ApiResponse> {
+    return await this.reqBase("auth", {}, "get");
   }
 }
 

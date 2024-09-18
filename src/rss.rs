@@ -9,10 +9,10 @@ use crate::state::{Config, DataBase};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RssItem {
-    title: String,
-    link: String,
-    description: String,
-    status: RssItemStatus,
+    pub title: String,
+    pub link: String,
+    pub description: String,
+    pub status: RssItemStatus,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -25,19 +25,20 @@ pub enum RssItemStatus {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum RssStatus {
-    Ok,
+    Created,
+    Updated,
     Error(String),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Rss {
-    url: String,
-    title: String,
-    description: String,
-    items: Vec<RssItem>,
-    update_time: std::time::SystemTime,
-    update_interval: std::time::Duration,
-    status: RssStatus,
+    pub url: String,
+    pub title: String,
+    pub description: String,
+    pub items: Vec<RssItem>,
+    pub update_time: std::time::SystemTime,
+    pub update_interval: std::time::Duration,
+    pub status: RssStatus,
 }
 
 pub async fn fetch_rss(link: &str) -> Result<Channel> {
@@ -58,7 +59,7 @@ pub async fn rss_task(db: Arc<RwLock<DataBase>>) {
                         continue;
                     }
                 };
-                rss.status = RssStatus::Ok;
+                rss.status = RssStatus::Updated;
                 rss.update_time = std::time::SystemTime::now();
                 for item in channel.items() {
                     let item = item.clone();

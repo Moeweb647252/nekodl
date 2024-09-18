@@ -1,6 +1,6 @@
-use crate::utils::rand_str;
-
 use super::*;
+use crate::utils::rand_str;
+use crate::utils::FromDepot;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -20,11 +20,11 @@ pub async fn login(
     depot: &mut Depot,
     req: &mut Request,
 ) -> Result<ApiResponse<Option<Resp>>, Error> {
-    let config = Config::borrow_from(depot)?.read().await;
+    let config = Config::from_depot(depot)?.read().await;
     let json: ReqData = req.parse_json().await?;
     let token = rand_str(16);
     {
-        let mut state = State::borrow_from(depot)?.write().await;
+        let mut state = State::from_depot(depot)?.write().await;
         state.token = Some(token.clone());
     }
     Ok(

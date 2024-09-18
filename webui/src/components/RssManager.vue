@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Ref, ref } from "vue";
+import { onMounted, Ref, ref } from "vue";
 import { api } from "../api";
 import { errNotif } from "../utils";
 
@@ -13,12 +13,20 @@ const new_rss_info: Ref<{
 
 const submit_new_rss = () => {
   api
-    .add_new_rss(new_rss_info.value.name, new_rss_info.value.url)
+    .add_new_rss(new_rss_info.value.url)
     .then(() => {})
     .catch((e) => errNotif(e));
 };
 
+const fetch_rsses = () => {};
+
+const data = ref([]);
+
 const rss_add_modal = ref(false);
+
+onMounted(() => {
+  fetch_rsses();
+});
 </script>
 
 <template style="height: 100%">
@@ -26,6 +34,17 @@ const rss_add_modal = ref(false);
     <template #extra>
       <a-button type="primary" @click="rss_add_modal = true">添加</a-button>
     </template>
+    <a-list item-layout="horizontal" :data-source="data">
+      <template #renderItem="{ item }">
+        <a-list-item>
+          <a-list-item-meta :description="item.description">
+            <template #title>
+              <p>{{ item.title }}</p>
+            </template>
+          </a-list-item-meta>
+        </a-list-item>
+      </template>
+    </a-list>
   </a-card>
   <a-modal
     v-model:open="rss_add_modal"

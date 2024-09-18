@@ -1,10 +1,19 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import RssManager from "../components/RssManager.vue";
+import { api } from "../api";
+import { useRouter } from "vue-router";
 
+const router = useRouter();
 const selectedKey = ref([1]);
 const component = computed(() => {
   return [RssManager][selectedKey.value[0] - 1];
+});
+
+onMounted(() => {
+  api.authorize().catch(() => {
+    router.push({ path: "/login" });
+  });
 });
 </script>
 

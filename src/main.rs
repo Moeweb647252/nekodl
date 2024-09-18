@@ -1,8 +1,8 @@
 use clap::Parser;
 use salvo::cors::{AllowCredentials, AllowHeaders, AllowMethods, Cors};
-use salvo::http::Method;
 use salvo::prelude::*;
-use state::{Config, State};
+use state::{Config, DataBase, State};
+use std::fs::read;
 use std::sync::Arc;
 use tokio::{fs::write, sync::RwLock};
 use utils::{rand_str, sha256};
@@ -43,12 +43,16 @@ async fn main() -> anyhow::Result<()> {
         config = config.update_bind_addr(bind_addr)
     }
 
+    let db_data = read(config.db_path.as_str())?;
+    let db: DataBase = bincode::deserialize(&db_data)?;
+
     let state = State { token: None };
 
     let sock = TcpListener::new("[::]:8001").bind().await;
     let router = Router::new()
         .hoop(affix_state::inject(Arc::new(RwLock::new(config))))
         .hoop(affix_state::inject(Arc::new(RwLock::new(state))))
+        .hoop(affix_state::inject(Arc::new(RwLock::new(db))))
         .push(Router::with_path("/api").append(&mut api::routes()));
     let service = Service::new(router).hoop(
         Cors::new()

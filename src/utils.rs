@@ -1,7 +1,10 @@
+use anyhow::{Context, Result};
 use rand::Rng;
 use salvo::{async_trait, prelude::*};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 use crate::api::ApiResponse;
 
@@ -25,6 +28,35 @@ pub fn rand_str(length: usize) -> String {
     random_string
 }
 
+#[async_trait]
+impl<T> Writer for ApiResponse<T>
+where
+    T: Serialize + Send,
+{
+    async fn write(self, _req: &mut Request, _depot: &mut Depot, res: &mut Response) {
+        res.body(match serde_json::to_string(&self) {
+            Ok(data) => data,
+            Err(err) => err.to_string(),
+        });
+    }
+}
+
+pub trait FromDepot {
+    fn from_depot(depot: &Depot) -> anyhow::Result<&Arc<RwLock<Self>>>;
+}
+
+impl<T> FromDepot for T
+where
+    T: Sync + Send + 'static,
+{
+    fn from_depot(depot: &Depot) -> anyhow::Result<&Arc<RwLock<Self>>> {
+        Ok(depot.obtain::<Arc<RwLock<Self>>>().ok().context(format!(
+            "Internal Error: file: {},lLine: {}",
+            file!(),
+            line!()
+        ))?)
+    }
+}
 #[cfg(test)]
 mod test {
     use crate::utils::{rand_str, sha256};
@@ -42,18 +74,5 @@ mod test {
     #[test]
     fn test_rand_str_sha256() {
         println!("{}", sha256(&rand_str(8)));
-    }
-}
-
-#[async_trait]
-impl<T> Writer for ApiResponse<T>
-where
-    T: Serialize + Send,
-{
-    async fn write(self, _req: &mut Request, _depot: &mut Depot, res: &mut Response) {
-        res.body(match serde_json::to_string(&self) {
-            Ok(data) => data,
-            Err(err) => err.to_string(),
-        });
     }
 }

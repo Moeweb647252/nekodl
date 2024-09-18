@@ -12,6 +12,7 @@ pub struct Config {
     pub password: String,
     pub username: String,
     pub token: Option<String>,
+    pub db_path: String,
 }
 
 impl Config {
@@ -34,14 +35,6 @@ impl Config {
             ..self
         }
     }
-
-    pub fn borrow_from(depot: &Depot) -> anyhow::Result<&Arc<RwLock<Self>>> {
-        Ok(depot.obtain::<Arc<RwLock<Self>>>().ok().context(format!(
-            "Internal Error: file: {},lLine: {}",
-            file!(),
-            line!()
-        ))?)
-    }
 }
 
 impl Default for Config {
@@ -51,6 +44,7 @@ impl Default for Config {
             username: "admin".to_owned(),
             password: "".to_owned(),
             token: None,
+            db_path: "aria2.db".to_owned(),
         }
     }
 }
@@ -58,16 +52,6 @@ impl Default for Config {
 #[derive(Debug, Clone)]
 pub struct State {
     pub token: Option<String>,
-}
-
-impl State {
-    pub fn borrow_from(depot: &Depot) -> anyhow::Result<&Arc<RwLock<Self>>> {
-        Ok(depot.obtain::<Arc<RwLock<Self>>>().ok().context(format!(
-            "Internal Error: file: {},lLine: {}",
-            file!(),
-            line!()
-        ))?)
-    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -81,5 +65,9 @@ impl DataBase {
         let path = PathBuf::from(path);
         std::fs::write(path, data)?;
         Ok(())
+    }
+
+    pub fn rss_mut(&mut self) -> &mut Vec<Rss> {
+        &mut self.rss
     }
 }

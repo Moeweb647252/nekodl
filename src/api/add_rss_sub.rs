@@ -1,20 +1,41 @@
+use std::time::{Duration, SystemTime};
+
+use crate::{
+    rss::{fetch_rss, Rss, RssStatus},
+    state::DataBase,
+};
+
 use super::*;
-use base64::prelude::*;
+use rss::Channel;
 use salvo::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 #[derive(Deserialize)]
 struct ReqData {
-    name: String,
     url: String,
 }
 
 #[handler]
 pub async fn add_rss_sub(depot: &mut Depot, req: &mut Request) -> Result<ApiResponse<()>, Error> {
     let data: ReqData = req.parse_json().await?;
-    let rss_url = data.url;
+    let Channel {
+        title, description, ..
+    } = fetch_rss(&data.url).await?;
+    let rss = Rss {
+        title: title,
+        url: data.url,
+        items: Vec::new(),
+        description: description,
+        update_time: SystemTime::now(),
+        update_interval: Duration::from_secs(3600),
+        status: RssStatus::Created,
+    };
     {
-        let mut config = Config::borrow_from(depot)?.write().await;
+        DataBase::from_depot(depot)?
+            .write()
+            .await
+            .rss_mut()
+            .push(rss);
     }
     Ok(ApiResponse::ok(()))
 }

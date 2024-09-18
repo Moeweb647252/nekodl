@@ -1,23 +1,28 @@
 use anyhow::anyhow;
 use salvo::{async_trait, Depot, FlowCtrl, Handler, Request, Response, Router, Writer};
 use serde::Serialize;
-use std::fmt::Display;
+use std::{fmt::Display, vec};
 use tracing::error;
 
-use crate::state::{Config, State};
+use crate::{
+    state::{Config, State},
+    utils::FromDepot,
+};
 
 mod add_rss_sub;
 mod add_torrent_task;
 mod auth;
+mod get_rss_list;
 mod login;
 
 pub fn routes() -> Vec<Router> {
     vec![
         Router::with_path("login").post(login::login),
-        Router::with_path("add_torrent")
-            .hoop(ApiHandler)
-            .post(add_torrent_task::add_torrent_task)
-            .get(auth::auth),
+        Router::new().hoop(ApiHandler).append(&mut vec![
+            Router::with_path("add_torrent_task").post(add_torrent_task::add_torrent_task),
+            Router::with_path("auth").get(auth::auth),
+            Router::with_path("get_rss_list").get(get_rss_list::get_rss_list),
+        ]),
     ]
 }
 
@@ -131,7 +136,7 @@ impl Handler for ApiHandler {
         res: &mut Response,
         ctrl: &mut FlowCtrl,
     ) {
-        let state = match State::borrow_from(&depot) {
+        let state = match State::from_depot(&depot) {
             Ok(state) => state.clone(),
             Err(err) => {
                 Error::from(err).write(req, depot, res).await;
