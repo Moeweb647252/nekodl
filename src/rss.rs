@@ -49,9 +49,10 @@ pub async fn fetch_rss(link: &str) -> Result<Channel> {
 
 pub async fn rss_task(db: Arc<RwLock<DataBase>>) {
     loop {
-        let mut db = db.write().await;
+        let mut db = db.write().await; //锁一直锁
         for rss in db.rss_list.iter_mut() {
             if rss.update_time.elapsed().unwrap() > rss.update_interval {
+                //耗时操作 fetch_rss
                 let channel = match fetch_rss(&rss.url).await {
                     Ok(channel) => channel,
                     Err(e) => {
@@ -65,6 +66,7 @@ pub async fn rss_task(db: Arc<RwLock<DataBase>>) {
                     let item = item.clone();
                     if let Some(link) = item.link {
                         if rss.items.iter().filter(|i| i.link == link).count() == 0 {
+                            //此处是写操作
                             rss.items.push(RssItem {
                                 title: item.title.clone().unwrap_or("default title".to_owned()),
                                 link,
