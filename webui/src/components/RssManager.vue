@@ -4,16 +4,14 @@ import { api } from "../api";
 import { errNotif } from "../utils";
 
 const new_rss_info: Ref<{
-  name: string;
   url: string;
 }> = ref({
-  name: "",
   url: "",
 });
 
 const submit_new_rss = () => {
   api
-    .add_new_rss(new_rss_info.value.url)
+    .add_rss_sub(new_rss_info.value.url)
     .then(() => {})
     .catch((e) => errNotif(e));
 };
@@ -59,7 +57,6 @@ onMounted(() => {
     @ok="submit_new_rss"
   >
     <a-space direction="vertical" style="width: 100%">
-      <div>名称: <a-input v-model:value="new_rss_info.name"></a-input></div>
       <div>链接: <a-input v-model:value="new_rss_info.url"></a-input></div>
     </a-space>
   </a-modal>

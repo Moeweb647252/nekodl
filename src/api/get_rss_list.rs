@@ -13,7 +13,7 @@ pub async fn get_rss_list(depot: &mut Depot) -> Result<ApiResponse<Resp>, Error>
     Ok(ApiResponse::new(
         Code::Success,
         Resp {
-            rsses: db.read().await.rss.clone(),
+            rsses: db.read().await.rss_list.clone(),
         },
         "",
     ))

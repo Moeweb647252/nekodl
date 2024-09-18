@@ -1,8 +1,8 @@
 use anyhow::{Context, Ok, Result};
 use salvo::Depot;
 use serde::{Deserialize, Serialize};
-use std::{fs::read_to_string, path::PathBuf, sync::Arc};
-use tokio::sync::RwLock;
+use std::{fs::read_to_string, path::PathBuf, sync::Arc, time::Duration};
+use tokio::{fs::write, sync::RwLock, time::sleep};
 
 use crate::rss::Rss;
 
@@ -56,18 +56,38 @@ pub struct State {
 
 #[derive(Serialize, Deserialize)]
 pub struct DataBase {
-    pub rss: Vec<Rss>,
+    pub rss_list: Vec<Rss>,
 }
 
 impl DataBase {
-    pub fn save(&self, path: &str) -> Result<()> {
+    pub async fn save(&self, path: &str) -> Result<()> {
         let data = bincode::serialize(self)?;
         let path = PathBuf::from(path);
-        std::fs::write(path, data)?;
+        tokio::fs::write(path, data).await?;
         Ok(())
     }
 
-    pub fn rss_mut(&mut self) -> &mut Vec<Rss> {
-        &mut self.rss
+    pub fn rss_list_mut(&mut self) -> &mut Vec<Rss> {
+        &mut self.rss_list
+    }
+}
+
+pub async fn data_save_task(
+    db: Arc<RwLock<DataBase>>,
+    config: Arc<RwLock<Config>>,
+    config_path: String,
+) {
+    loop {
+        sleep(Duration::from_secs(60)).await;
+        let config_dup = { config.read().await.clone() };
+        write(
+            &config_path,
+            serde_json::to_string_pretty(&config_dup)
+                .unwrap()
+                .as_bytes(),
+        )
+        .await
+        .unwrap();
+        db.write().await.save(&config_dup.db_path).await.unwrap();
     }
 }

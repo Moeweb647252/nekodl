@@ -20,6 +20,8 @@ export class Api {
     });
   }
 
+  token: string | null = null;
+
   async reqBase(
     path: string,
     data: { [key: string]: string },
@@ -30,6 +32,9 @@ export class Api {
       method: method,
       url: path,
       data: data,
+      headers: {
+        Token: this.token,
+      },
     });
     if (resp.data.code === 200) {
       return resp.data;
@@ -41,16 +46,17 @@ export class Api {
   async login(username: string, password: string): Promise<string> {
     const hash = new Sha256();
     hash.update(password, "utf8");
-    return (
+    this.token = (
       await this.reqBase("login", {
         username: username,
         password: bytesToHex(await hash.digest()).toUpperCase(),
       })
     ).data.token;
+    return this.token;
   }
 
-  async add_new_rss(url: string): Promise<ApiResponse> {
-    return await this.reqBase("add_new_rss", { url: url });
+  async add_rss_sub(url: string): Promise<ApiResponse> {
+    return await this.reqBase("add_rss_sub", { url: url });
   }
 
   async get_rss_list(): Promise<ApiResponse> {

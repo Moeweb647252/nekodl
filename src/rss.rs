@@ -49,8 +49,8 @@ pub async fn fetch_rss(link: &str) -> Result<Channel> {
 
 pub async fn rss_task(db: Arc<RwLock<DataBase>>) {
     loop {
-        let mut rsses = { db.read().await.rss.clone() };
-        for rss in rsses.iter_mut() {
+        let mut db = db.write().await;
+        for rss in db.rss_list.iter_mut() {
             if rss.update_time.elapsed().unwrap() > rss.update_interval {
                 let channel = match fetch_rss(&rss.url).await {
                     Ok(channel) => channel,

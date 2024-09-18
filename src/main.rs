@@ -1,7 +1,9 @@
+use bincode::config;
 use clap::Parser;
+use rss::rss_task;
 use salvo::cors::{AllowCredentials, AllowHeaders, AllowMethods, Cors};
 use salvo::prelude::*;
-use state::{Config, DataBase, State};
+use state::{data_save_task, Config, DataBase, State};
 use std::fs::{self, read};
 use std::io;
 use std::sync::Arc;
@@ -29,7 +31,7 @@ async fn main() -> anyhow::Result<()> {
 
     let app = App::parse();
 
-    let mut config = if let Some(conf_path) = app.config {
+    let mut config = if let Some(conf_path) = &app.config {
         Config::from_path(conf_path.into())?
     } else {
         let rand_pw = rand_str(8);
@@ -40,8 +42,8 @@ async fn main() -> anyhow::Result<()> {
         config
     };
 
-    if let Some(bind_addr) = app.bind {
-        config = config.update_bind_addr(bind_addr)
+    if let Some(bind_addr) = &app.bind {
+        config = config.update_bind_addr(bind_addr.clone())
     }
 
     let db_data = read(config.db_path.as_str());
@@ -50,7 +52,9 @@ async fn main() -> anyhow::Result<()> {
         Ok(data) => bincode::deserialize(&data)?,
         Err(e) => match e.kind() {
             io::ErrorKind::NotFound => {
-                let db = DataBase { rss: Vec::new() };
+                let db = DataBase {
+                    rss_list: Vec::new(),
+                };
                 let data = bincode::serialize(&db)?;
                 write(config.db_path.as_str(), data).await?;
                 db
@@ -60,13 +64,21 @@ async fn main() -> anyhow::Result<()> {
             }
         },
     };
-    let state = State { token: None };
 
+    let state = Arc::new(RwLock::new(State { token: None }));
+    let config = Arc::new(RwLock::new(config));
+    let db = Arc::new(RwLock::new(db));
+    tokio::spawn(data_save_task(
+        db.clone(),
+        config.clone(),
+        app.config.unwrap_or("./config.json".to_owned()),
+    ));
+    tokio::spawn(rss_task(db.clone()));
     let sock = TcpListener::new("[::]:8001").bind().await;
     let router = Router::new()
-        .hoop(affix_state::inject(Arc::new(RwLock::new(config))))
-        .hoop(affix_state::inject(Arc::new(RwLock::new(state))))
-        .hoop(affix_state::inject(Arc::new(RwLock::new(db))))
+        .hoop(affix_state::inject(config))
+        .hoop(affix_state::inject(state))
+        .hoop(affix_state::inject(db))
         .push(Router::with_path("/api").append(&mut api::routes()));
     let service = Service::new(router).hoop(
         Cors::new()
@@ -76,6 +88,7 @@ async fn main() -> anyhow::Result<()> {
             .allow_headers(AllowHeaders::any())
             .into_handler(),
     );
+
     Server::new(sock).serve(service).await;
     Ok(())
 }

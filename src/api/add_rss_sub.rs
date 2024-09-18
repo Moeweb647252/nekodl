@@ -34,7 +34,7 @@ pub async fn add_rss_sub(depot: &mut Depot, req: &mut Request) -> Result<ApiResp
         DataBase::from_depot(depot)?
             .write()
             .await
-            .rss_mut()
+            .rss_list_mut()
             .push(rss);
     }
     Ok(ApiResponse::ok(()))

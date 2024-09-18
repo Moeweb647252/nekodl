@@ -22,6 +22,7 @@ pub fn routes() -> Vec<Router> {
             Router::with_path("add_torrent_task").post(add_torrent_task::add_torrent_task),
             Router::with_path("auth").get(auth::auth),
             Router::with_path("get_rss_list").get(get_rss_list::get_rss_list),
+            Router::with_path("add_rss_sub").post(add_rss_sub::add_rss_sub),
         ]),
     ]
 }
