@@ -48,6 +48,10 @@ export class Api {
       })
     ).data.token;
   }
+
+  async add_new_rss(name: string, url: string): Promise<ApiResponse> {
+    return await this.reqBase("add_new_rss", { name: name, url: url });
+  }
 }
 
 export const api = new Api("http://localhost:8001/api");

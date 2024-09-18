@@ -50,7 +50,7 @@ impl Default for Config {
             bind_address: "[::]:8001".to_owned(),
             username: "admin".to_owned(),
             password: "".to_owned(),
-            ..Default::default()
+            token: None,
         }
     }
 }
@@ -73,4 +73,13 @@ impl State {
 #[derive(Serialize, Deserialize)]
 pub struct DataBase {
     pub rss: Vec<Rss>,
+}
+
+impl DataBase {
+    pub fn save(&self, path: &str) -> Result<()> {
+        let data = bincode::serialize(self)?;
+        let path = PathBuf::from(path);
+        std::fs::write(path, data)?;
+        Ok(())
+    }
 }

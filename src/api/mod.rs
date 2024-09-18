@@ -8,6 +8,7 @@ use crate::state::{Config, State};
 
 mod add_rss_sub;
 mod add_torrent_task;
+mod auth;
 mod login;
 
 pub fn routes() -> Vec<Router> {
@@ -15,7 +16,8 @@ pub fn routes() -> Vec<Router> {
         Router::with_path("login").post(login::login),
         Router::with_path("add_torrent")
             .hoop(ApiHandler)
-            .post(add_torrent_task::add_torrent_task),
+            .post(add_torrent_task::add_torrent_task)
+            .get(auth::auth),
     ]
 }
 
