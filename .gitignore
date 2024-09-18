@@ -1,2 +1,4 @@
 /target
 .VSCodeCounter
+config.json
+db.bin

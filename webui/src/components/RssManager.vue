@@ -18,7 +18,14 @@ const submit_new_rss = () => {
     .catch((e) => errNotif(e));
 };
 
-const fetch_rsses = () => {};
+const fetch_rsses = () => {
+  api
+    .get_rss_list()
+    .then((rsses) => {
+      console.log(rsses);
+    })
+    .catch((e) => errNotif(e));
+};
 
 const data = ref([]);
 
