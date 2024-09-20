@@ -12,6 +12,7 @@ use utils::{rand_str, sha256};
 
 mod api;
 mod aria2;
+mod event;
 mod rss;
 mod state;
 mod static_serv;
@@ -53,6 +54,7 @@ async fn main() -> anyhow::Result<()> {
         Err(e) => match e.kind() {
             io::ErrorKind::NotFound => {
                 let db = DataBase {
+                    rss_id_index: 0,
                     rss_list: Vec::new(),
                 };
                 let data = bincode::serialize(&db)?;

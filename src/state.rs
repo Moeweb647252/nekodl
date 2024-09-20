@@ -57,6 +57,7 @@ pub struct State {
 #[derive(Serialize, Deserialize)]
 pub struct DataBase {
     pub rss_list: Vec<Rss>,
+    pub rss_id_index: usize,
 }
 
 impl DataBase {

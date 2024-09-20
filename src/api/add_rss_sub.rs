@@ -1,11 +1,12 @@
 use std::time::{Duration, SystemTime};
 
 use crate::{
-    rss::{fetch_rss, Rss, RssStatus},
+    rss::{fetch_channel, fetch_rss, Rss, RssStatus},
     state::DataBase,
 };
 
 use super::*;
+use bincode::config;
 use rss::Channel;
 use salvo::prelude::*;
 use serde::Deserialize;
@@ -20,8 +21,14 @@ pub async fn add_rss_sub(depot: &mut Depot, req: &mut Request) -> Result<ApiResp
     let data: ReqData = req.parse_json().await?;
     let Channel {
         title, description, ..
-    } = fetch_rss(&data.url).await?;
+    } = fetch_channel(&data.url).await?;
+    let id = {
+        let mut db = DataBase::from_depot(depot)?.write().await;
+        db.rss_id_index += 1;
+        db.rss_id_index
+    };
     let rss = Rss {
+        id: id,
         title: title,
         url: data.url,
         items: Vec::new(),

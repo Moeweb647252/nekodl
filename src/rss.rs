@@ -3,9 +3,15 @@ use std::sync::Arc;
 use anyhow::Result;
 use rss::{Channel, Item};
 use serde::{Deserialize, Serialize};
-use tokio::sync::RwLock;
+use tokio::{
+    sync::{mpsc::Receiver, RwLock},
+    task::JoinHandle,
+};
 
-use crate::state::{Config, DataBase};
+use crate::{
+    event::Event,
+    state::{Config, DataBase},
+};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RssItem {
@@ -30,8 +36,9 @@ pub enum RssStatus {
     Error(String),
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Rss {
+    pub id: usize,
     pub url: String,
     pub title: String,
     pub description: String,
@@ -41,7 +48,15 @@ pub struct Rss {
     pub status: RssStatus,
 }
 
-pub async fn fetch_rss(link: &str) -> Result<Channel> {
+pub async fn fetch_rss(link: &str) -> Result<Rss> {
+    let client = reqwest::Client::new();
+    let content = client.get(link).send().await?.bytes().await?;
+    let channel = Channel::read_from(&content[..])?;
+
+    todo!()
+}
+
+pub async fn fetch_channel(link: &str) -> Result<Channel> {
     let client = reqwest::Client::new();
     let content = client.get(link).send().await?.bytes().await?;
     Ok(Channel::read_from(&content[..])?)
@@ -53,7 +68,7 @@ pub async fn rss_task(db: Arc<RwLock<DataBase>>) {
         for rss in db.rss_list.iter_mut() {
             if rss.update_time.elapsed().unwrap() > rss.update_interval {
                 //耗时操作 fetch_rss
-                let channel = match fetch_rss(&rss.url).await {
+                let channel = match fetch_channel(&rss.url).await {
                     Ok(channel) => channel,
                     Err(e) => {
                         rss.status = RssStatus::Error(e.to_string());
@@ -86,13 +101,13 @@ pub async fn rss_task(db: Arc<RwLock<DataBase>>) {
 
 #[cfg(test)]
 mod test {
-    use super::fetch_rss;
+    use super::*;
 
     #[tokio::main]
     async fn async_test_fetch_rss() {
         println!(
             "{:?}",
-            fetch_rss("https://mikanani.me/RSS/Bangumi?bangumiId=3367&subgroupid=611")
+            fetch_channel("https://mikanani.me/RSS/Bangumi?bangumiId=3367&subgroupid=611")
                 .await
                 .unwrap()
                 .items()
