@@ -6,12 +6,15 @@ use serde::{Deserialize, Serialize};
 use tokio::{
     sync::{mpsc::Receiver, RwLock},
     task::JoinHandle,
+    time::sleep,
 };
 
 use crate::{
     event::Event,
     state::{Config, DataBase},
 };
+
+use tokio::sync::mpsc::Sender;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RssItem {
@@ -48,54 +51,53 @@ pub struct Rss {
     pub status: RssStatus,
 }
 
-pub async fn fetch_rss(link: &str) -> Result<Rss> {
-    let client = reqwest::Client::new();
-    let content = client.get(link).send().await?.bytes().await?;
-    let channel = Channel::read_from(&content[..])?;
-
-    todo!()
-}
-
 pub async fn fetch_channel(link: &str) -> Result<Channel> {
     let client = reqwest::Client::new();
     let content = client.get(link).send().await?.bytes().await?;
     Ok(Channel::read_from(&content[..])?)
 }
 
-pub async fn rss_task(db: Arc<RwLock<DataBase>>) {
+pub async fn rss_task(sender: Sender<Rss>, mut rss: Rss) {
     loop {
-        let mut db = db.write().await; //锁一直锁
-        for rss in db.rss_list.iter_mut() {
-            if rss.update_time.elapsed().unwrap() > rss.update_interval {
-                //耗时操作 fetch_rss
-                let channel = match fetch_channel(&rss.url).await {
-                    Ok(channel) => channel,
-                    Err(e) => {
-                        rss.status = RssStatus::Error(e.to_string());
-                        continue;
-                    }
-                };
-                rss.status = RssStatus::Updated;
-                rss.update_time = std::time::SystemTime::now();
-                for item in channel.items() {
-                    let item = item.clone();
-                    if let Some(link) = item.link {
-                        if rss.items.iter().filter(|i| i.link == link).count() == 0 {
-                            //此处是写操作
-                            rss.items.push(RssItem {
-                                title: item.title.clone().unwrap_or("default title".to_owned()),
-                                link,
-                                description: item
-                                    .description
-                                    .clone()
-                                    .unwrap_or("default description".to_owned()),
-                                status: RssItemStatus::Unread,
-                            });
-                        }
-                    }
-                }
-            }
+        if rss.update_time.elapsed().unwrap() < rss.update_interval {
+            sleep(rss.update_time.elapsed().unwrap() - rss.update_interval).await
         }
+        let channel = fetch_channel(&rss.url).await.unwrap();
+        let mut items = Vec::new();
+        for item in channel.items() {
+            let title = if let Some(title) = item.title() {
+                title.to_string()
+            } else {
+                "Default Title".to_owned()
+            };
+            let link = if let Some(link) = item.link() {
+                link.to_string()
+            } else {
+                continue;
+            };
+            let description = if let Some(description) = item.description() {
+                description.to_string()
+            } else {
+                "Default Description".to_owned()
+            };
+            items.push(RssItem {
+                title,
+                link,
+                description,
+                status: RssItemStatus::Unread,
+            });
+        }
+        rss.items = items;
+        rss.update_time = std::time::SystemTime::now();
+        rss.status = RssStatus::Updated;
+    }
+}
+
+impl RssItem {
+    pub fn comprare_rss_crate(self, item: &rss::Item) -> bool {
+        Some(self.title.as_str()) == item.title()
+            && Some(self.link.as_str()) == item.link()
+            && Some(self.description.as_str()) == item.description()
     }
 }
 

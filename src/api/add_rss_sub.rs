@@ -1,12 +1,11 @@
 use std::time::{Duration, SystemTime};
 
 use crate::{
-    rss::{fetch_channel, fetch_rss, Rss, RssStatus},
+    rss::{fetch_channel, Rss, RssStatus},
     state::DataBase,
 };
 
 use super::*;
-use bincode::config;
 use rss::Channel;
 use salvo::prelude::*;
 use serde::Deserialize;

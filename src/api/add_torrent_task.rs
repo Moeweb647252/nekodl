@@ -15,6 +15,5 @@ pub async fn add_torrent_task(
 ) -> Result<ApiResponse<()>, Error> {
     let data: ReqData = req.parse_json().await?;
     let bt_data = BASE64_STANDARD.decode(data.bt_data)?;
-
     todo!()
 }

@@ -75,7 +75,6 @@ async fn main() -> anyhow::Result<()> {
         config.clone(),
         app.config.unwrap_or("./config.json".to_owned()),
     ));
-    tokio::spawn(rss_task(db.clone()));
     let sock = TcpListener::new("[::]:8001").bind().await;
     let router = Router::new()
         .hoop(affix_state::inject(config))
