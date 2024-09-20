@@ -1,5 +1,6 @@
 use bincode::config;
 use clap::Parser;
+use event::event_handle_task;
 use rss::rss_task;
 use salvo::cors::{AllowCredentials, AllowHeaders, AllowMethods, Cors};
 use salvo::prelude::*;
@@ -7,7 +8,10 @@ use state::{data_save_task, Config, DataBase, State};
 use std::fs::{self, read};
 use std::io;
 use std::sync::Arc;
+use tokio::sync::mpsc;
 use tokio::{fs::write, sync::RwLock};
+use tracing::info;
+use tracing_subscriber::EnvFilter;
 use utils::{rand_str, sha256};
 
 mod api;
@@ -28,13 +32,17 @@ struct App {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt().init();
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env())
+        .init();
 
     let app = App::parse();
 
     let mut config = if let Some(conf_path) = &app.config {
+        info!("Read config from {}", conf_path);
         Config::from_path(conf_path.into())?
     } else {
+        info!("Creating default config");
         let rand_pw = rand_str(8);
         let sha_256_pw = sha256(&rand_pw);
         println!("Default account: username: admin, password: {}", rand_pw);
@@ -75,8 +83,16 @@ async fn main() -> anyhow::Result<()> {
         config.clone(),
         app.config.unwrap_or("./config.json".to_owned()),
     ));
+    let (tx, rx) = mpsc::channel(1000);
+    tokio::spawn(event_handle_task(
+        config.clone(),
+        db.clone(),
+        tx.clone(),
+        rx,
+    ));
     let sock = TcpListener::new("[::]:8001").bind().await;
     let router = Router::new()
+        .hoop(affix_state::inject(tx.clone()))
         .hoop(affix_state::inject(config))
         .hoop(affix_state::inject(state))
         .hoop(affix_state::inject(db))

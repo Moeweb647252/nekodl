@@ -1,16 +1,20 @@
 use std::{collections::HashMap, sync::Arc};
 
 use tokio::{
-    sync::{mpsc::Receiver, RwLock},
+    sync::{
+        mpsc::{Receiver, Sender},
+        RwLock,
+    },
     task::JoinHandle,
 };
-use tracing::error;
+use tracing::{debug, error, info};
 
 use crate::{
-    rss::Rss,
+    rss::{rss_task, Rss},
     state::{Config, DataBase},
 };
 
+#[derive(Debug, Clone)]
 pub enum Event {
     AddRss(Rss),
     SaveDatabase,
@@ -20,14 +24,23 @@ pub enum Event {
 pub async fn event_handle_task(
     config: Arc<RwLock<Config>>,
     db: Arc<RwLock<DataBase>>,
+    sender: Sender<Event>,
     mut receiver: Receiver<Event>,
 ) {
     use Event::*;
-    let task_pool: HashMap<usize, JoinHandle<()>> = HashMap::new();
+    let mut task_pool: HashMap<usize, JoinHandle<()>> = HashMap::new();
+    for rss in db.write().await.rss_list.iter() {
+        let handle = tokio::spawn(rss_task(sender.clone(), rss.clone()));
+        task_pool.insert(rss.id, handle);
+    }
     while let Some(event) = receiver.recv().await {
         match event {
             AddRss(rss) => {
-                todo!()
+                info!("Adding rss: {}", rss.url);
+                let handle = tokio::spawn(rss_task(sender.clone(), rss.clone()));
+                task_pool.insert(rss.id, handle);
+                db.write().await.rss_list.push(rss);
+                sender.send(SaveDatabase).await.unwrap();
             }
             SaveDatabase => {
                 db.read()

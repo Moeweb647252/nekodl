@@ -1,18 +1,9 @@
-use std::sync::Arc;
-
 use anyhow::Result;
-use rss::{Channel, Item};
+use rss::Channel;
 use serde::{Deserialize, Serialize};
-use tokio::{
-    sync::{mpsc::Receiver, RwLock},
-    task::JoinHandle,
-    time::sleep,
-};
+use tokio::time::sleep;
 
-use crate::{
-    event::Event,
-    state::{Config, DataBase},
-};
+use crate::event::Event;
 
 use tokio::sync::mpsc::Sender;
 
@@ -32,7 +23,7 @@ pub enum RssItemStatus {
     Downloaded,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum RssStatus {
     Created,
     Updated,
@@ -57,10 +48,12 @@ pub async fn fetch_channel(link: &str) -> Result<Channel> {
     Ok(Channel::read_from(&content[..])?)
 }
 
-pub async fn rss_task(sender: Sender<Rss>, mut rss: Rss) {
+pub async fn rss_task(sender: Sender<Event>, mut rss: Rss) {
     loop {
-        if rss.update_time.elapsed().unwrap() < rss.update_interval {
-            sleep(rss.update_time.elapsed().unwrap() - rss.update_interval).await
+        if rss.update_time.elapsed().unwrap() < rss.update_interval
+            && rss.status != RssStatus::Created
+        {
+            sleep(rss.update_interval - rss.update_time.elapsed().unwrap()).await
         }
         let channel = fetch_channel(&rss.url).await.unwrap();
         let mut items = Vec::new();
@@ -90,6 +83,7 @@ pub async fn rss_task(sender: Sender<Rss>, mut rss: Rss) {
         rss.items = items;
         rss.update_time = std::time::SystemTime::now();
         rss.status = RssStatus::Updated;
+        sender.send(Event::UpdateRss(rss.clone())).await.unwrap();
     }
 }
 

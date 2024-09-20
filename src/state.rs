@@ -3,6 +3,7 @@ use salvo::Depot;
 use serde::{Deserialize, Serialize};
 use std::{fs::read_to_string, path::PathBuf, sync::Arc, time::Duration};
 use tokio::{fs::write, sync::RwLock, time::sleep};
+use tracing::info;
 
 use crate::rss::Rss;
 
@@ -44,7 +45,7 @@ impl Default for Config {
             username: "admin".to_owned(),
             password: "".to_owned(),
             token: None,
-            db_path: "aria2.db".to_owned(),
+            db_path: "db.bin".to_owned(),
         }
     }
 }
@@ -62,14 +63,11 @@ pub struct DataBase {
 
 impl DataBase {
     pub async fn save(&self, path: &str) -> Result<()> {
+        info!("save db to {}", path);
         let data = bincode::serialize(self)?;
         let path = PathBuf::from(path);
         tokio::fs::write(path, data).await?;
         Ok(())
-    }
-
-    pub fn rss_list_mut(&mut self) -> &mut Vec<Rss> {
-        &mut self.rss_list
     }
 }
 

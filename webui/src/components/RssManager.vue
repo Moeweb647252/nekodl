@@ -12,15 +12,19 @@ const new_rss_info: Ref<{
 const submit_new_rss = () => {
   api
     .add_rss_sub(new_rss_info.value.url)
-    .then(() => {})
+    .then(() => {
+      fetch_rsse_list();
+      rss_add_modal.value = false;
+      new_rss_info.value.url = "";
+    })
     .catch((e) => errNotif(e));
 };
 
-const fetch_rsses = () => {
+const fetch_rsse_list = () => {
   api
     .get_rss_list()
-    .then((rsses) => {
-      console.log(rsses);
+    .then((res) => {
+      data.value = res.data.rss_list;
     })
     .catch((e) => errNotif(e));
 };
@@ -30,7 +34,7 @@ const data = ref([]);
 const rss_add_modal = ref(false);
 
 onMounted(() => {
-  fetch_rsses();
+  fetch_rsse_list();
 });
 </script>
 
@@ -42,6 +46,9 @@ onMounted(() => {
     <a-list item-layout="horizontal" :data-source="data">
       <template #renderItem="{ item }">
         <a-list-item>
+          <template #extra>
+            <a-button type="primary">查看</a-button>
+          </template>
           <a-list-item-meta :description="item.description">
             <template #title>
               <p>{{ item.title }}</p>

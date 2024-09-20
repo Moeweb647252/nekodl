@@ -1,6 +1,7 @@
 use std::time::{Duration, SystemTime};
 
 use crate::{
+    event::Event,
     rss::{fetch_channel, Rss, RssStatus},
     state::DataBase,
 };
@@ -9,6 +10,7 @@ use super::*;
 use rss::Channel;
 use salvo::prelude::*;
 use serde::Deserialize;
+use tokio::sync::mpsc::Sender;
 
 #[derive(Deserialize)]
 struct ReqData {
@@ -36,12 +38,11 @@ pub async fn add_rss_sub(depot: &mut Depot, req: &mut Request) -> Result<ApiResp
         update_interval: Duration::from_secs(3600),
         status: RssStatus::Created,
     };
-    {
-        DataBase::from_depot(depot)?
-            .write()
-            .await
-            .rss_list_mut()
-            .push(rss);
-    }
+    depot
+        .obtain::<Sender<Event>>()
+        .ok()
+        .context("No sender found")?
+        .send(Event::AddRss(rss))
+        .await?;
     Ok(ApiResponse::ok(()))
 }

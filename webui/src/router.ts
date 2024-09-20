@@ -14,6 +14,18 @@ export const router = createRouter({
     {
       name: "main",
       path: "/",
+      children: [
+        {
+          name: "rss_viewer",
+          path: "rss/:id/view",
+          component: () => import("./components/RssViewer.vue"),
+        },
+        {
+          name: "rss_manager",
+          path: "rss",
+          component: () => import("./components/RssManager.vue"),
+        },
+      ],
       component: MainView,
     },
   ],
