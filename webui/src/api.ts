@@ -63,6 +63,10 @@ export class Api {
     return await this.reqBase("get_rss_list", {}, "get");
   }
 
+  async get_rss_info(id: string): Promise<ApiResponse> {
+    return await this.reqBase("get_rss_info", { id: id });
+  }
+
   async authorize(): Promise<ApiResponse> {
     return await this.reqBase("auth", {}, "get");
   }

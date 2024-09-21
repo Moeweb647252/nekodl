@@ -21,3 +21,4 @@ time = { version = "0.3.36", features = ["macros", "serde"] }
 tokio = { version = "1.40.0", features = ["full"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+ts-rs = "10.0.0"

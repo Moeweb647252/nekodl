@@ -12,6 +12,7 @@ use crate::{
 mod add_rss_sub;
 mod add_torrent_task;
 mod auth;
+mod get_rss_info;
 mod get_rss_list;
 mod login;
 

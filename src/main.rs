@@ -32,31 +32,37 @@ struct App {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // 初始化日志记录器
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
         .init();
 
+    // 解析命令行参数
     let app = App::parse();
 
+    // 加载或创建配置文件
     let mut config = if let Some(conf_path) = &app.config {
-        info!("Read config from {}", conf_path);
+        info!("从 {} 读取配置", conf_path);
         Config::from_path(conf_path.into())?
     } else {
-        info!("Creating default config");
-        let rand_pw = rand_str(8);
-        let sha_256_pw = sha256(&rand_pw);
-        println!("Default account: username: admin, password: {}", rand_pw);
+        info!("创建默认配置");
+        let rand_pw = rand_str(8); // 生成随机密码
+        let sha_256_pw = sha256(&rand_pw); // 对密码进行 SHA-256 哈希
+        println!("默认账户: 用户名: admin, 密码: {}", rand_pw);
         let config = Config::default().update_password(sha_256_pw);
-        write("./config.json", serde_json::to_string(&config)?).await?;
+        write("./config.json", serde_json::to_string(&config)?).await?; // 将默认配置写入文件
         config
     };
 
+    // 如果命令行参数中指定了绑定地址，则更新配置
     if let Some(bind_addr) = &app.bind {
         config = config.update_bind_addr(bind_addr.clone())
     }
 
+    // 读取数据库数据
     let db_data = read(config.db_path.as_str());
 
+    // 反序列化数据库数据或创建新的数据库实例
     let db: DataBase = match db_data {
         Ok(data) => bincode::deserialize(&data)?,
         Err(e) => match e.kind() {
@@ -66,37 +72,50 @@ async fn main() -> anyhow::Result<()> {
                     rss_list: Vec::new(),
                 };
                 let data = bincode::serialize(&db)?;
-                write(config.db_path.as_str(), data).await?;
+                write(config.db_path.as_str(), data).await?; // 将新的数据库实例写入文件
                 db
             }
             _ => {
-                panic!("Read database error: {}", e);
+                panic!("读取数据库错误: {}", e);
             }
         },
     };
 
+    // 创建共享状态
     let state = Arc::new(RwLock::new(State { token: None }));
     let config = Arc::new(RwLock::new(config));
     let db = Arc::new(RwLock::new(db));
+
+    // 启动数据保存任务
     tokio::spawn(data_save_task(
         db.clone(),
         config.clone(),
         app.config.unwrap_or("./config.json".to_owned()),
     ));
+
+    // 创建消息通道
     let (tx, rx) = mpsc::channel(1000);
+
+    // 启动事件处理任务
     tokio::spawn(event_handle_task(
         config.clone(),
         db.clone(),
         tx.clone(),
         rx,
     ));
+
+    // 创建 TCP 监听器
     let sock = TcpListener::new("[::]:8001").bind().await;
+
+    // 创建路由器并添加中间件和路由
     let router = Router::new()
         .hoop(affix_state::inject(tx.clone()))
         .hoop(affix_state::inject(config))
         .hoop(affix_state::inject(state))
         .hoop(affix_state::inject(db))
         .push(Router::with_path("/api").append(&mut api::routes()));
+
+    // 创建服务并添加 CORS 中间件
     let service = Service::new(router).hoop(
         Cors::new()
             .allow_origin("*")
@@ -106,6 +125,8 @@ async fn main() -> anyhow::Result<()> {
             .into_handler(),
     );
 
+    // 启动服务器
     Server::new(sock).serve(service).await;
+
     Ok(())
 }
