@@ -1,7 +1,11 @@
+use crate::download::Command;
+
 use super::*;
+use crate::utils::FromDepot;
 use base64::prelude::*;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
+use tokio::sync::mpsc::Sender;
 
 #[derive(Deserialize)]
 struct ReqData {
@@ -15,5 +19,7 @@ pub async fn add_torrent_task(
 ) -> Result<ApiResponse<()>, Error> {
     let data: ReqData = req.parse_json().await?;
     let bt_data = BASE64_STANDARD.decode(data.bt_data)?;
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    Sender::from_depot(&depot)?.send(Command::AddTorrentFile(bt_data, tx));
     todo!()
 }

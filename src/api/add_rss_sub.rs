@@ -37,7 +37,7 @@ pub async fn add_rss_sub(depot: &mut Depot, req: &mut Request) -> Result<ApiResp
 
     // 生成新的RSS ID
     let id = {
-        let mut db = DataBase::from_depot(depot)?.write().await;
+        let mut db = DataBaseLock::from_depot(depot)?.write().await;
         db.rss_id_index += 1;
         db.rss_id_index
     };

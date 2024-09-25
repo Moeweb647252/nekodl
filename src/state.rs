@@ -1,11 +1,10 @@
-use anyhow::{Context, Ok, Result};
-use salvo::Depot;
+use anyhow::{Ok, Result};
 use serde::{Deserialize, Serialize};
 use std::{fs::read_to_string, path::PathBuf, sync::Arc, time::Duration};
 use tokio::{fs::write, sync::RwLock, time::sleep};
 use tracing::info;
 
-use crate::rss::Rss;
+use crate::{download::DownloadTask, rss::Rss};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
@@ -14,6 +13,8 @@ pub struct Config {
     pub username: String,
     pub token: Option<String>,
     pub db_path: String,
+    pub session_path: String,
+    pub torrent_options: TorrentOptions,
 }
 
 impl Config {
@@ -46,6 +47,10 @@ impl Default for Config {
             password: "".to_owned(),
             token: None,
             db_path: "db.bin".to_owned(),
+            session_path: "session".to_owned(),
+            torrent_options: TorrentOptions {
+                trackers: Vec::new(),
+            },
         }
     }
 }
@@ -55,10 +60,16 @@ pub struct State {
     pub token: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TorrentOptions {
+    pub trackers: Vec<String>,
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct DataBase {
     pub rss_list: Vec<Rss>,
     pub rss_id_index: usize,
+    pub download_task_list: Vec<DownloadTask>,
 }
 
 impl DataBase {

@@ -1,5 +1,4 @@
 use super::*;
-use crate::state::DataBase;
 use salvo::prelude::*;
 use time::OffsetDateTime;
 
@@ -30,7 +29,7 @@ pub async fn get_rss_list(depot: &mut Depot) -> Result<ApiResponse<Resp>, Error>
         Code::Success,
         // 从Depot中读取数据库，并映射RSS列表项为RssInfo结构体
         Resp {
-            rss_list: DataBase::from_depot(depot)?
+            rss_list: DataBaseLock::from_depot(depot)?
                 .read()
                 .await
                 .rss_list

@@ -1,20 +1,26 @@
 use anyhow::anyhow;
 use salvo::{async_trait, Depot, FlowCtrl, Handler, Request, Response, Router, Writer};
 use serde::Serialize;
-use std::{fmt::Display, vec};
+use std::{fmt::Display, sync::Arc, vec};
+use tokio::sync::RwLock;
 use tracing::error;
 
 use crate::{
-    state::{Config, State},
+    state::{Config, DataBase, State},
     utils::FromDepot,
 };
 
 mod add_rss_sub;
 mod add_torrent_task;
 mod auth;
+mod download;
 mod get_rss_info;
 mod get_rss_list;
 mod login;
+
+type DataBaseLock = Arc<RwLock<DataBase>>;
+type StateLock = Arc<RwLock<State>>;
+type ConfigLock = Arc<RwLock<Config>>;
 
 pub fn routes() -> Vec<Router> {
     vec![
@@ -143,7 +149,7 @@ impl Handler for ApiHandler {
             ctrl.call_next(req, depot, res).await;
             return;
         }
-        let state = match State::from_depot(&depot) {
+        let state = match StateLock::from_depot(&depot) {
             Ok(state) => state.clone(),
             Err(err) => {
                 Error::from(err).write(req, depot, res).await;

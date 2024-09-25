@@ -1,4 +1,4 @@
-use crate::{rss::Rss, state::DataBase};
+use crate::rss::Rss;
 
 use super::*;
 use salvo::prelude::*;
@@ -17,7 +17,7 @@ pub async fn get_rss_info(depot: &mut Depot, req: &mut Request) -> Result<ApiRes
     // 从数据库中读取RSS列表，并查找与请求数据ID匹配的RSS项
     // 如果找到，则返回该项的克隆；如果没有找到，则返回错误信息
     Ok(ApiResponse::ok(
-        DataBase::from_depot(depot)?
+        DataBaseLock::from_depot(depot)?
             .read()
             .await
             .rss_list

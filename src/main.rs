@@ -1,11 +1,10 @@
-use bincode::config;
+#![allow(dead_code)]
 use clap::Parser;
 use event::event_handle_task;
-use rss::rss_task;
 use salvo::cors::{AllowCredentials, AllowHeaders, AllowMethods, Cors};
 use salvo::prelude::*;
 use state::{data_save_task, Config, DataBase, State};
-use std::fs::{self, read};
+use std::fs::read;
 use std::io;
 use std::sync::Arc;
 use tokio::sync::mpsc;
@@ -15,7 +14,7 @@ use tracing_subscriber::EnvFilter;
 use utils::{rand_str, sha256};
 
 mod api;
-mod aria2;
+mod download;
 mod event;
 mod rss;
 mod state;
@@ -70,6 +69,7 @@ async fn main() -> anyhow::Result<()> {
                 let db = DataBase {
                     rss_id_index: 0,
                     rss_list: Vec::new(),
+                    download_task_list: Vec::new(),
                 };
                 let data = bincode::serialize(&db)?;
                 write(config.db_path.as_str(), data).await?; // 将新的数据库实例写入文件
@@ -94,14 +94,21 @@ async fn main() -> anyhow::Result<()> {
     ));
 
     // 创建消息通道
-    let (tx, rx) = mpsc::channel(1000);
+    let event_task_channel = mpsc::channel(1000);
 
     // 启动事件处理任务
     tokio::spawn(event_handle_task(
         config.clone(),
         db.clone(),
-        tx.clone(),
-        rx,
+        event_task_channel.0.clone(),
+        event_task_channel.1,
+    ));
+
+    let download_task_channel = mpsc::channel(1000);
+    tokio::spawn(download::download_command_task(
+        download_task_channel.1,
+        db.clone(),
+        config.clone(),
     ));
 
     // 创建 TCP 监听器
@@ -109,7 +116,8 @@ async fn main() -> anyhow::Result<()> {
 
     // 创建路由器并添加中间件和路由
     let router = Router::new()
-        .hoop(affix_state::inject(tx.clone()))
+        .hoop(affix_state::inject(event_task_channel.0))
+        .hoop(affix_state::inject(download_task_channel.0))
         .hoop(affix_state::inject(config))
         .hoop(affix_state::inject(state))
         .hoop(affix_state::inject(db))

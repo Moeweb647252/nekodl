@@ -1,10 +1,8 @@
-use anyhow::{Context, Result};
+use anyhow::Context;
 use rand::Rng;
 use salvo::{async_trait, prelude::*};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
-use std::sync::Arc;
-use tokio::sync::RwLock;
 
 use crate::api::ApiResponse;
 
@@ -42,15 +40,15 @@ where
 }
 
 pub trait FromDepot {
-    fn from_depot(depot: &Depot) -> anyhow::Result<&Arc<RwLock<Self>>>;
+    fn from_depot(depot: &Depot) -> anyhow::Result<&Self>;
 }
 
 impl<T> FromDepot for T
 where
     T: Sync + Send + 'static,
 {
-    fn from_depot(depot: &Depot) -> anyhow::Result<&Arc<RwLock<Self>>> {
-        Ok(depot.obtain::<Arc<RwLock<Self>>>().ok().context(format!(
+    fn from_depot(depot: &Depot) -> anyhow::Result<&Self> {
+        Ok(depot.obtain::<Self>().ok().context(format!(
             "Internal Error: file: {},lLine: {}",
             file!(),
             line!()
