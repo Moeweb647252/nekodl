@@ -2,3 +2,4 @@
 .VSCodeCounter
 config.json
 db.bin
+Cargo.lock
