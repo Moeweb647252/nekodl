@@ -9,6 +9,7 @@ struct RssInfo {
     update: OffsetDateTime,
     update_interval: usize,
     item_num: usize,
+    id: usize,
 }
 
 #[derive(Serialize)]
@@ -40,6 +41,7 @@ pub async fn get_rss_list(depot: &mut Depot) -> Result<ApiResponse<Resp>, Error>
                     update: OffsetDateTime::from(v.update_time), // 从更新时间创建OffsetDateTime
                     item_num: v.items.len(),                     // 获取RSS项的数量
                     update_interval: v.update_interval.as_secs() as usize, // 将更新间隔转换为秒
+                    id: v.id,
                 })
                 .collect(), // 收集映射后的RssInfo结构体为Vec
         },

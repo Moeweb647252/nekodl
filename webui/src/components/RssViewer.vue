@@ -12,8 +12,9 @@ watch(
   () => {}
 );
 onMounted(() => {
+  console.log(route.params);
   api
-    .get_rss_info(route.params.id as string)
+    .get_rss_info(parseInt(route.params.id as string))
     .then((res) => {
       rss_info.value = res.data;
       console.log(res);

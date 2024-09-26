@@ -24,7 +24,7 @@ export class Api {
 
   async reqBase(
     path: string,
-    data: { [key: string]: string },
+    data: any,
     method: Method = "post"
   ): Promise<ApiResponse> {
     console.log(data);
@@ -63,7 +63,7 @@ export class Api {
     return await this.reqBase("get_rss_list", {}, "get");
   }
 
-  async get_rss_info(id: string): Promise<ApiResponse> {
+  async get_rss_info(id: number): Promise<ApiResponse> {
     return await this.reqBase("get_rss_info", { id: id });
   }
 
