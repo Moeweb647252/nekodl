@@ -2,6 +2,9 @@
 import { onMounted, Ref, ref } from "vue";
 import { api } from "../api";
 import { errNotif } from "../utils";
+import { useRouter } from "vue-router";
+
+const router = useRouter();
 
 const new_rss_info: Ref<{
   url: string;
@@ -47,7 +50,11 @@ onMounted(() => {
       <template #renderItem="{ item }">
         <a-list-item>
           <template #extra>
-            <a-button type="primary">查看</a-button>
+            <a-button
+              type="primary"
+              @click="router.push(`/rss/${item.id}/view`)"
+              >查看</a-button
+            >
           </template>
           <a-list-item-meta :description="item.description">
             <template #title>

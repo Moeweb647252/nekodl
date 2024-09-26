@@ -1,13 +1,25 @@
 <script setup lang="ts">
-import { onMounted, watch } from "vue";
+import { onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
+import { api } from "../api";
+import { errNotif } from "../utils";
 
 const route = useRoute();
+const rss_info = ref();
+
 watch(
   () => route.params,
   () => {}
 );
-onMounted(() => {});
+onMounted(() => {
+  api
+    .get_rss_info(route.params.id as string)
+    .then((res) => {
+      rss_info.value = res.data;
+      console.log(res);
+    })
+    .catch((e) => errNotif(e));
+});
 </script>
 
 <template>
@@ -27,7 +39,7 @@ onMounted(() => {});
     </a-col>
   </a-row>
   <hr />
-  <a-list item-layout="horizontal" :data-source="">
+  <a-list item-layout="horizontal">
     <template #renderItem="{ item }">
       <a-list-item>
         <template #extra>

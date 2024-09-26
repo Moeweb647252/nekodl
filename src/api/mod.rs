@@ -16,6 +16,7 @@ mod auth;
 mod download;
 mod get_rss_info;
 mod get_rss_list;
+mod get_torrent_info;
 mod login;
 
 type DataBaseLock = Arc<RwLock<DataBase>>;
