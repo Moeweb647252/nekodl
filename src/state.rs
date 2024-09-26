@@ -46,8 +46,8 @@ impl Default for Config {
             username: "admin".to_owned(),
             password: "".to_owned(),
             token: None,
-            db_path: "db.bin".to_owned(),
-            session_path: "session".to_owned(),
+            db_path: "./db.bin".to_owned(),
+            session_path: "./session".to_owned(),
             torrent_options: TorrentOptions {
                 trackers: Vec::new(),
             },
@@ -55,9 +55,10 @@ impl Default for Config {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct State {
     pub token: Option<String>,
+    pub rqbit_session: Option<Arc<librqbit::Session>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

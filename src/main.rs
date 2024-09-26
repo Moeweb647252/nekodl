@@ -82,7 +82,10 @@ async fn main() -> anyhow::Result<()> {
     };
 
     // 创建共享状态
-    let state = Arc::new(RwLock::new(State { token: None }));
+    let state = Arc::new(RwLock::new(State {
+        token: None,
+        rqbit_session: None,
+    }));
     let config = Arc::new(RwLock::new(config));
     let db = Arc::new(RwLock::new(db));
 
@@ -107,7 +110,7 @@ async fn main() -> anyhow::Result<()> {
     let download_task_channel = mpsc::channel(1000);
     tokio::spawn(download::download_command_task(
         download_task_channel.1,
-        db.clone(),
+        state.clone(),
         config.clone(),
     ));
 

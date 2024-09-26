@@ -5,7 +5,7 @@ use salvo::hyper::body::Bytes;
 use serde::{Deserialize, Serialize};
 use tokio::sync::{mpsc, oneshot, RwLock};
 
-use crate::state::{Config, DataBase};
+use crate::state::{Config, DataBase, State};
 
 pub enum Command {
     AddTorrentFile(Vec<u8>, oneshot::Sender<usize>),
@@ -16,12 +16,11 @@ pub struct DownloadTask {}
 
 pub async fn download_command_task(
     mut receiver: mpsc::Receiver<Command>,
-    db: Arc<RwLock<DataBase>>,
+    state: Arc<RwLock<State>>,
     config: Arc<RwLock<Config>>,
 ) -> anyhow::Result<()> {
-    let mut session_path = dirs::template_dir().unwrap_or("/tmp".into());
-    session_path.push("aria2rss");
-    let session = librqbit::Session::new(session_path).await?;
+    let session = librqbit::Session::new(config.read().await.session_path.as_str().into()).await?;
+    state.write().await.rqbit_session = Some(session.clone());
     while let Some(command) = receiver.recv().await {
         match command {
             Command::AddTorrentFile(torrent_file, tx) => {
@@ -35,6 +34,7 @@ pub async fn download_command_task(
                     )
                     .await?;
                 let handle = resp.into_handle().unwrap();
+                handle.wait_until_completed();
                 tx.send(handle.id()).ok();
             }
         }

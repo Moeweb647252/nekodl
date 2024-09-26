@@ -4,7 +4,7 @@ use super::*;
 use crate::utils::FromDepot;
 use base64::prelude::*;
 use salvo::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use tokio::sync::mpsc::Sender;
 
 #[derive(Deserialize)]

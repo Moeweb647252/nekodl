@@ -3,7 +3,6 @@ use std::time::{Duration, SystemTime};
 use crate::{
     event::Event,
     rss::{fetch_channel, Rss, RssStatus},
-    state::DataBase,
 };
 
 use super::*;

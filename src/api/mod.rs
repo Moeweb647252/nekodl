@@ -149,38 +149,41 @@ impl Handler for ApiHandler {
             ctrl.call_next(req, depot, res).await;
             return;
         }
-        let state = match StateLock::from_depot(&depot) {
-            Ok(state) => state.clone(),
-            Err(err) => {
-                Error::from(err).write(req, depot, res).await;
-                ctrl.skip_rest();
-                return;
-            }
-        };
-
-        let token = req
-            .headers()
-            .get("Token")
-            .map(|v| v.to_str().unwrap_or(""))
-            .unwrap_or("");
-        if token
-            != match &state.read().await.token {
-                Some(token) => token,
-                None => {
-                    Error::from(anyhow!("Missing token"))
-                        .write(req, depot, res)
-                        .await;
+        #[cfg(not(debug_assertions))]
+        {
+            let state = match StateLock::from_depot(&depot) {
+                Ok(state) => state.clone(),
+                Err(err) => {
+                    Error::from(err).write(req, depot, res).await;
                     ctrl.skip_rest();
                     return;
                 }
+            };
+
+            let token = req
+                .headers()
+                .get("Token")
+                .map(|v| v.to_str().unwrap_or(""))
+                .unwrap_or("");
+            if token
+                != match &state.read().await.token {
+                    Some(token) => token,
+                    None => {
+                        Error::from(anyhow!("Missing token"))
+                            .write(req, depot, res)
+                            .await;
+                        ctrl.skip_rest();
+                        return;
+                    }
+                }
+            {
+                Error::from(anyhow!("Invalid token"))
+                    .write(req, depot, res)
+                    .await;
+                ctrl.skip_rest();
+            } else {
+                ctrl.call_next(req, depot, res).await;
             }
-        {
-            Error::from(anyhow!("Invalid token"))
-                .write(req, depot, res)
-                .await;
-            ctrl.skip_rest();
-        } else {
-            ctrl.call_next(req, depot, res).await;
         }
     }
 }
