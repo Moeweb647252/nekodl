@@ -41,30 +41,36 @@ onMounted(() => {
 });
 </script>
 
-<template style="height: 100%">
-  <a-card title="RSS订阅" class="full">
-    <template #extra>
-      <a-button type="primary" @click="rss_add_modal = true">添加</a-button>
-    </template>
-    <a-list item-layout="horizontal" :data-source="data">
-      <template #renderItem="{ item }">
-        <a-list-item>
-          <template #extra>
-            <a-button
-              type="primary"
-              @click="router.push(`/rss/${item.id}/view`)"
-              >查看</a-button
-            >
-          </template>
-          <a-list-item-meta :description="item.description">
-            <template #title>
-              <p>{{ item.title }}</p>
-            </template>
-          </a-list-item-meta>
-        </a-list-item>
+<template>
+  <div style="height: 100%; display: flex; flex-flow: column">
+    <a-breadcrumb>
+      <a-breadcrumb-item>Main</a-breadcrumb-item>
+      <a-breadcrumb-item>rss</a-breadcrumb-item>
+    </a-breadcrumb>
+    <a-card title="RSS订阅" style="flex: 1; margin-bottom: 10px">
+      <template #extra>
+        <a-button type="primary" @click="rss_add_modal = true">添加</a-button>
       </template>
-    </a-list>
-  </a-card>
+      <a-list item-layout="horizontal" :data-source="data">
+        <template #renderItem="{ item }">
+          <a-list-item>
+            <template #extra>
+              <a-button
+                type="primary"
+                @click="router.push(`/rss/${item.id}/view`)"
+                >查看</a-button
+              >
+            </template>
+            <a-list-item-meta :description="item.description">
+              <template #title>
+                <p>{{ item.title }}</p>
+              </template>
+            </a-list-item-meta>
+          </a-list-item>
+        </template>
+      </a-list>
+    </a-card>
+  </div>
   <a-modal
     v-model:open="rss_add_modal"
     title="添加RSS订阅"

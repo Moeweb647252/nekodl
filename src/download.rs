@@ -34,7 +34,6 @@ pub async fn download_command_task(
                     )
                     .await?;
                 let handle = resp.into_handle().unwrap();
-                handle.wait_until_completed();
                 tx.send(handle.id()).ok();
             }
         }

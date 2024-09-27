@@ -31,7 +31,7 @@ onMounted(() => {
           <a-menu-item key="2">下载进度</a-menu-item>
         </a-menu>
       </a-layout-sider>
-      <a-layout-content :style="{ padding: 0, margin: '24px' }">
+      <a-layout-content :style="{ padding: 0, margin: '0px 16px' }">
         <router-view></router-view>
       </a-layout-content>
     </a-layout>
