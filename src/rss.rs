@@ -18,7 +18,6 @@ pub struct RssItem {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ItemTorrent {
-    pub link: String,
     pub files: Vec<TorrentFileInfo>,
     pub update_time: std::time::SystemTime,
 }
@@ -150,8 +149,6 @@ impl RssItem {
             && Some(self.description.as_str()) == item.description()
     }
 }
-
-pub async fn fetch_torrent_for_item(lock: Weak<RwLock<RssItem>>) {}
 
 #[cfg(test)]
 mod test {

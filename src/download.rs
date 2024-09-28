@@ -5,7 +5,7 @@ use salvo::hyper::body::Bytes;
 use serde::{Deserialize, Serialize};
 use tokio::sync::{mpsc, oneshot, RwLock};
 
-use crate::state::{Config, DataBase, State};
+use crate::state::{Config, State};
 
 pub enum Command {
     AddTorrentFile(Vec<u8>, oneshot::Sender<usize>),

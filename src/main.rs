@@ -21,6 +21,7 @@ mod rss;
 mod state;
 mod static_serv;
 mod task;
+mod torrent;
 mod utils;
 
 #[derive(clap::Parser)]
