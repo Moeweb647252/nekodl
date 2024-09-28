@@ -4,6 +4,7 @@ use event::event_handle_task;
 use salvo::cors::{AllowCredentials, AllowHeaders, AllowMethods, Cors};
 use salvo::prelude::*;
 use state::{data_save_task, Config, DataBase, State};
+use std::collections::HashMap;
 use std::fs::read;
 use std::io;
 use std::sync::Arc;
@@ -69,7 +70,7 @@ async fn main() -> anyhow::Result<()> {
             io::ErrorKind::NotFound => {
                 let db = DataBase {
                     rss_id_index: 0,
-                    rss_list: Vec::new(),
+                    rss_list: HashMap::new(),
                     download_task_list: Vec::new(),
                 };
                 let data = bincode::serialize(&db)?;

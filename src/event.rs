@@ -11,14 +11,13 @@ use tracing::{error, info};
 
 use crate::{
     rss::{rss_task, Rss},
-    state::{Config, DataBase},
+    state::{Config, DataBase, SerdeLockLayer},
 };
 
 #[derive(Debug, Clone)]
 pub enum Event {
     AddRss(Rss),
     SaveDatabase,
-    UpdateRss(Rss),
 }
 
 /// 处理事件的异步任务函数。
@@ -37,26 +36,28 @@ pub async fn event_handle_task(
 ) {
     use Event::*;
     // 创建一个任务池，用于存储和管理异步任务。
-    let mut task_pool: HashMap<usize, JoinHandle<()>> = HashMap::new();
+    let mut rss_task_pool: HashMap<usize, JoinHandle<()>> = HashMap::new();
+    //let mut jobset = tokio::task::JoinSet::new();
     // 遍历数据库中的RSS列表，并为每个RSS源创建一个异步任务。
     for rss in db.write().await.rss_list.iter() {
-        let handle = tokio::spawn(rss_task(sender.clone(), rss.clone()));
-        task_pool.insert(rss.read().await.id, handle);
+        let handle = tokio::spawn(rss_task(rss.1.weak()));
+        rss_task_pool.insert(rss.0.clone(), handle);
     }
     // 循环接收事件，并根据事件类型执行相应的操作。
+
     while let Some(event) = receiver.recv().await {
         match event {
             // 添加新的RSS源。
             AddRss(rss) => {
                 info!("Adding rss: {}", rss.url);
                 let id = rss.id;
-                let rss = Arc::new(RwLock::new(rss));
+                let lock = SerdeLockLayer::new(rss);
                 // 为新RSS源创建异步任务。
-                let handle = tokio::spawn(rss_task(sender.clone(), rss.clone()));
+                let handle = tokio::spawn(rss_task(lock.weak()));
                 // 将新任务添加到任务池。
-                task_pool.insert(id, handle);
+                rss_task_pool.insert(id, handle);
                 // 将新RSS源添加到数据库。
-                db.write().await.rss_list.push(rss);
+                db.write().await.rss_list.insert(id, lock);
                 // 发送保存数据库的事件。
                 sender.send(SaveDatabase).await.unwrap();
             }
@@ -69,18 +70,6 @@ pub async fn event_handle_task(
                     .await
                     .inspect_err(|e| error!("save database error: {}", e))
                     .ok();
-            }
-            // 更新RSS源。
-            UpdateRss(rss) => {
-                // 在数据库中查找匹配的RSS源，并更新它。
-                if let Some(item) = db
-                    .write()
-                    .await
-                    .rss_list_mut().await.iter()
-                    .find(|item| item.id == rss.id)
-                {
-                    **item = rss;
-                }
             }
         }
     }

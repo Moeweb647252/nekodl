@@ -1,13 +1,10 @@
-use std::sync::Arc;
+use crate::state::SerdeLockLayer;
 use anyhow::Result;
 use rss::Channel;
 use serde::{Deserialize, Serialize};
-use tokio::time::sleep;
-
-use crate::event::Event;
-
-use tokio::sync::mpsc::Sender;
+use std::sync::Weak;
 use tokio::sync::RwLock;
+use tokio::time::sleep;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RssItem {
@@ -16,7 +13,7 @@ pub struct RssItem {
     pub description: String,
     pub status: RssItemStatus,
     pub torrent: Option<ItemTorrent>,
-    pub id: usize
+    pub id: usize,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -54,10 +51,25 @@ pub struct Rss {
     pub url: String,
     pub title: String,
     pub description: String,
-    pub items: Vec<RssItem>,
+    pub items: Vec<SerdeLockLayer<RssItem>>,
     pub update_time: std::time::SystemTime,
     pub update_interval: std::time::Duration,
     pub status: RssStatus,
+}
+
+impl Rss {
+    pub fn info(&self) -> Self {
+        Self {
+            items: Vec::new(),
+            id: self.id,
+            title: self.title.clone(),
+            description: self.description.clone(),
+            url: self.url.clone(),
+            update_time: self.update_time,
+            update_interval: self.update_interval,
+            status: RssStatus::Created,
+        }
+    }
 }
 
 pub async fn fetch_channel(link: &str) -> Result<Channel> {
@@ -69,10 +81,14 @@ pub async fn fetch_channel(link: &str) -> Result<Channel> {
 // 定义一个异步函数rss_task，用于更新RSS源并发送更新事件
 // sender: 用于发送事件的通道
 // rss: 需要更新的RSS源
-pub async fn rss_task(sender: Sender<Event>, mut rss_lock: Arc<RwLock<Rss>>) {
+pub async fn rss_task(rss_lock: Weak<RwLock<Rss>>) {
     // 无限循环，持续检查并更新RSS源
     loop {
-        let mut rss = rss_lock.read().await.clone();
+        let mut rss = if let Some(lock) = rss_lock.upgrade() {
+            lock.read().await.clone()
+        } else {
+            break;
+        };
         // 如果距离上次更新时间小于更新间隔，并且RSS状态不是已创建，则等待剩余时间
         if rss.update_time.elapsed().unwrap() < rss.update_interval
             && rss.status != RssStatus::Created
@@ -114,13 +130,16 @@ pub async fn rss_task(sender: Sender<Event>, mut rss_lock: Arc<RwLock<Rss>>) {
             });
         }
         // 更新RSS源的项
-        rss.items = items;
+        rss.items = items.into_iter().map(|v| v.into()).collect();
         // 更新RSS源的最后更新时间
         rss.update_time = std::time::SystemTime::now();
         // 设置RSS源的状态为已更新
         rss.status = RssStatus::Updated;
-        // 发送更新事件
-        sender.send(Event::UpdateRss(rss.clone())).await.unwrap();
+        if let Some(lock) = rss_lock.upgrade() {
+            *lock.write().await = rss;
+        } else {
+            break;
+        };
     }
 }
 
@@ -131,6 +150,8 @@ impl RssItem {
             && Some(self.description.as_str()) == item.description()
     }
 }
+
+pub async fn fetch_torrent_for_item(lock: Weak<RwLock<RssItem>>) {}
 
 #[cfg(test)]
 mod test {

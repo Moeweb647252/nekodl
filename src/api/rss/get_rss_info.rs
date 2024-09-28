@@ -1,6 +1,7 @@
 use crate::rss::Rss;
 
 use crate::api::*;
+use crate::state::CloneInner;
 use salvo::prelude::*;
 use serde::Deserialize;
 
@@ -20,10 +21,11 @@ pub async fn get_rss_info(depot: &mut Depot, req: &mut Request) -> Result<ApiRes
         DataBaseLock::from_depot(depot)?
             .read()
             .await
-            .rss_list().await
-            .iter()
-            .find(|v| v.id == data.id)
+            .rss_list
+            .get(&data.id)
             .context("没有找到对应的RSS")?
-            .clone(),
+            .clone()
+            .clone_inner()
+            .await,
     ))
 }

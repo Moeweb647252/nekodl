@@ -1,8 +1,10 @@
-use anyhow::{Ok, Result};
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::sync::Weak;
 use std::{fs::read_to_string, path::PathBuf, sync::Arc, time::Duration};
+use tokio::sync::{RwLockReadGuard, RwLockWriteGuard};
 use tokio::{fs::write, sync::RwLock, time::sleep};
-use tokio::sync::RwLockWriteGuard;
 use tracing::info;
 
 use crate::{download::DownloadTask, rss::Rss};
@@ -67,9 +69,109 @@ pub struct TorrentOptions {
     pub trackers: Vec<String>,
 }
 
+#[derive(Debug, Clone)]
+pub struct SerdeLockLayer<T> {
+    inner: Arc<RwLock<T>>,
+}
+
+impl<T> SerdeLockLayer<T> {
+    pub fn new(inner: T) -> Self {
+        Self {
+            inner: Arc::new(RwLock::new(inner)),
+        }
+    }
+
+    pub async fn replace(&self, new: T) {
+        *self.inner.write().await = new;
+    }
+
+    pub fn weak(&self) -> Weak<RwLock<T>> {
+        Arc::downgrade(&self.inner)
+    }
+
+    pub async fn read(&self) -> RwLockReadGuard<T> {
+        self.inner.read().await
+    }
+
+    pub async fn write(&self) -> RwLockWriteGuard<T> {
+        self.inner.write().await
+    }
+}
+
+pub trait CloneInner<T>
+where
+    T: Clone,
+{
+    async fn clone_inner(&self) -> T;
+}
+
+impl<T> CloneInner<T> for SerdeLockLayer<T>
+where
+    T: Clone,
+{
+    async fn clone_inner(&self) -> T {
+        self.inner.read().await.clone()
+    }
+}
+
+impl<T> CloneInner<Vec<T>> for Vec<&SerdeLockLayer<T>>
+where
+    T: Clone,
+{
+    async fn clone_inner(&self) -> Vec<T> {
+        let mut res = Vec::new();
+        for layer in self {
+            res.push(layer.clone_inner().await);
+        }
+        res
+    }
+}
+
+impl<T> From<T> for SerdeLockLayer<T> {
+    fn from(value: T) -> Self {
+        Self {
+            inner: Arc::new(RwLock::new(value)),
+        }
+    }
+}
+
+impl<T> Serialize for SerdeLockLayer<T>
+where
+    T: Serialize,
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        loop {
+            match self.inner.try_write() {
+                Ok(guard) => {
+                    return serializer.serialize_some(&(*guard));
+                }
+                Err(_) => {}
+            }
+        }
+    }
+}
+
+impl<'de, T> Deserialize<'de> for SerdeLockLayer<T>
+where
+    T: Deserialize<'de>,
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        match T::deserialize(deserializer) {
+            Ok(t) => Ok(SerdeLockLayer::new(t)),
+            Err(e) => Err(e),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct DataBase {
-    pub rss_list: Vec<Arc<RwLock<Rss>>>,
+    pub rss_list: HashMap<usize, SerdeLockLayer<Rss>>,
     pub rss_id_index: usize,
     pub download_task_list: Vec<DownloadTask>,
 }
@@ -81,22 +183,6 @@ impl DataBase {
         let path = PathBuf::from(path);
         tokio::fs::write(path, data).await?;
         Ok(())
-    }
-
-    pub async fn rss_list(&self) -> Vec<Rss> {
-        let mut res = Vec::new();
-        for i in self.rss_list.iter() {
-            res.push(i.read().await.clone());
-        }
-        res
-    }
-
-    pub async fn rss_list_mut(&self) -> Vec<RwLockWriteGuard<Rss>> {
-        let mut res = Vec::new();
-        for i in self.rss_list.iter() {
-            res.push(i.write().await);
-        }
-        res
     }
 }
 
