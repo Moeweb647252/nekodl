@@ -10,14 +10,11 @@ use crate::{
     utils::FromDepot,
 };
 
-mod add_rss_sub;
-mod add_torrent_task;
 mod auth;
 mod download;
-mod get_rss_info;
-mod get_rss_list;
-mod get_torrent_info;
+
 mod login;
+mod rss;
 
 type DataBaseLock = Arc<RwLock<DataBase>>;
 type StateLock = Arc<RwLock<State>>;
@@ -27,11 +24,12 @@ pub fn routes() -> Vec<Router> {
     vec![
         Router::with_path("login").post(login::login),
         Router::new().hoop(ApiHandler).append(&mut vec![
-            Router::with_path("add_torrent_task").post(add_torrent_task::add_torrent_task),
+            Router::with_path("add_torrent_task")
+                .post(download::add_torrent_task::add_torrent_task),
             Router::with_path("auth").get(auth::auth),
-            Router::with_path("get_rss_list").get(get_rss_list::get_rss_list),
-            Router::with_path("add_rss_sub").post(add_rss_sub::add_rss_sub),
-            Router::with_path("get_rss_info").post(get_rss_info::get_rss_info),
+            Router::with_path("get_rss_list").get(rss::get_rss_list::get_rss_list),
+            Router::with_path("add_rss_sub").post(rss::add_rss_sub::add_rss_sub),
+            Router::with_path("get_rss_info").post(rss::get_rss_info::get_rss_info),
         ]),
     ]
 }
@@ -119,18 +117,15 @@ impl<T> Context<T> for Option<T> {
 impl Writer for Error {
     async fn write(self, _req: &mut Request, _depot: &mut Depot, res: &mut Response) {
         res.body(
-            match serde_json::to_string(&ApiResponse::new(
+            serde_json::to_string(&ApiResponse::new(
                 Code::ServerError,
                 Option::<()>::None,
                 self.inner.to_string().as_str(),
-            )) {
-                Ok(data) => data,
-                Err(err) => {
-                    #[cfg(debug_assertions)]
-                    error!("{}", err);
-                    "Error".to_owned()
-                }
-            },
+            )).unwrap_or_else(|err| {
+                #[cfg(debug_assertions)]
+                error!("{}", err);
+                "Error".to_owned()
+            }),
         );
     }
 }

@@ -42,33 +42,51 @@ onMounted(() => {
 </script>
 
 <template>
-  <div style="height: 100%; display: flex; flex-flow: column">
-    <a-breadcrumb>
+  <div
+    style="
+      display: grid;
+      height: 100%;
+      grid-template-rows: auto 1fr;
+      padding-bottom: 0.5rem;
+    "
+  >
+    <a-breadcrumb style="margin: 0.5rem">
       <a-breadcrumb-item>Main</a-breadcrumb-item>
       <a-breadcrumb-item>rss</a-breadcrumb-item>
     </a-breadcrumb>
-    <a-card title="RSS订阅" style="flex: 1; margin-bottom: 10px">
+    <a-card
+      style="
+        height: 100%;
+        overflow-y: hidden;
+        display: grid;
+        grid-template-rows: auto 1fr;
+      "
+      bodyStyle="height: 100%;"
+      title="RSS订阅"
+    >
       <template #extra>
         <a-button type="primary" @click="rss_add_modal = true">添加</a-button>
       </template>
-      <a-list item-layout="horizontal" :data-source="data">
-        <template #renderItem="{ item }">
-          <a-list-item>
-            <template #extra>
-              <a-button
-                type="primary"
-                @click="router.push(`/rss/${item.id}/view`)"
-                >查看</a-button
-              >
-            </template>
-            <a-list-item-meta :description="item.description">
-              <template #title>
-                <p>{{ item.title }}</p>
+      <div style="height: 100%; overflow-y: scroll">
+        <a-list item-layout="horizontal" :data-source="data">
+          <template #renderItem="{ item }">
+            <a-list-item>
+              <template #extra>
+                <a-button
+                  type="primary"
+                  @click="router.push(`/rss/${item.id}/view`)"
+                  >查看</a-button
+                >
               </template>
-            </a-list-item-meta>
-          </a-list-item>
-        </template>
-      </a-list>
+              <a-list-item-meta :description="item.description">
+                <template #title>
+                  <p>{{ item.title }}</p>
+                </template>
+              </a-list-item-meta>
+            </a-list-item>
+          </template>
+        </a-list>
+      </div>
     </a-card>
   </div>
   <a-modal

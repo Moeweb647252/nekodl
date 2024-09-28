@@ -7,6 +7,10 @@ import { errNotif } from "../utils";
 const route = useRoute();
 const rss_info = ref();
 
+const open_info_modal = ref(false);
+const current_item = ref();
+const item_torrent_info = ref();
+
 watch(
   () => route.params,
   () => {}
@@ -83,6 +87,29 @@ onMounted(() => {
       </div>
     </a-card>
   </div>
+  <a-modal title="查看" v-model:open="open_info_modal">
+    <div style="height: 100%; display: grid; grid-template-rows: auto 1fr; overflow-y: hidden">
+      <div>
+        <a-row>
+          <a-col :span="12">
+            <p>Title: {{ current_item.title }}</p>
+            <p>Description: {{ current_item.description }}</p>
+          </a-col>
+          <a-col :span="12">
+            <p>
+              Link: <a :href="current_item.link">{{ current_item.link }}</a>
+            </p>
+            <p>Status: {{ current_item.status }}</p>
+          </a-col>
+        </a-row>
+      </div>
+      <div style="height: 100%; overflow-y: scroll">
+        <a-list item-layout="horizontal">
+
+        </a-list>
+      </div>
+    </div>
+  </a-modal>
 </template>
 
 <style scoped>

@@ -2,6 +2,7 @@ use anyhow::{Ok, Result};
 use serde::{Deserialize, Serialize};
 use std::{fs::read_to_string, path::PathBuf, sync::Arc, time::Duration};
 use tokio::{fs::write, sync::RwLock, time::sleep};
+use tokio::sync::RwLockWriteGuard;
 use tracing::info;
 
 use crate::{download::DownloadTask, rss::Rss};
@@ -68,7 +69,7 @@ pub struct TorrentOptions {
 
 #[derive(Serialize, Deserialize)]
 pub struct DataBase {
-    pub rss_list: Vec<Rss>,
+    pub rss_list: Vec<Arc<RwLock<Rss>>>,
     pub rss_id_index: usize,
     pub download_task_list: Vec<DownloadTask>,
 }
@@ -80,6 +81,22 @@ impl DataBase {
         let path = PathBuf::from(path);
         tokio::fs::write(path, data).await?;
         Ok(())
+    }
+
+    pub async fn rss_list(&self) -> Vec<Rss> {
+        let mut res = Vec::new();
+        for i in self.rss_list.iter() {
+            res.push(i.read().await.clone());
+        }
+        res
+    }
+
+    pub async fn rss_list_mut(&self) -> Vec<RwLockWriteGuard<Rss>> {
+        let mut res = Vec::new();
+        for i in self.rss_list.iter() {
+            res.push(i.write().await);
+        }
+        res
     }
 }
 

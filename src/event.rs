@@ -41,7 +41,7 @@ pub async fn event_handle_task(
     // 遍历数据库中的RSS列表，并为每个RSS源创建一个异步任务。
     for rss in db.write().await.rss_list.iter() {
         let handle = tokio::spawn(rss_task(sender.clone(), rss.clone()));
-        task_pool.insert(rss.id, handle);
+        task_pool.insert(rss.read().await.id, handle);
     }
     // 循环接收事件，并根据事件类型执行相应的操作。
     while let Some(event) = receiver.recv().await {
@@ -49,10 +49,12 @@ pub async fn event_handle_task(
             // 添加新的RSS源。
             AddRss(rss) => {
                 info!("Adding rss: {}", rss.url);
+                let id = rss.id;
+                let rss = Arc::new(RwLock::new(rss));
                 // 为新RSS源创建异步任务。
                 let handle = tokio::spawn(rss_task(sender.clone(), rss.clone()));
                 // 将新任务添加到任务池。
-                task_pool.insert(rss.id, handle);
+                task_pool.insert(id, handle);
                 // 将新RSS源添加到数据库。
                 db.write().await.rss_list.push(rss);
                 // 发送保存数据库的事件。
@@ -74,11 +76,10 @@ pub async fn event_handle_task(
                 if let Some(item) = db
                     .write()
                     .await
-                    .rss_list
-                    .iter_mut()
+                    .rss_list_mut().await.iter()
                     .find(|item| item.id == rss.id)
                 {
-                    *item = rss;
+                    **item = rss;
                 }
             }
         }
