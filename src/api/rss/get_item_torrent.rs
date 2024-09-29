@@ -23,6 +23,10 @@ pub async fn get_item_torrent(
         .read()
         .await;
     let item = rss.items.get(reqdata.item_id).context("Item not found")?;
+    if let Some(torrent) = item.read().await.torrent.clone() {
+        return Ok(ApiResponse::ok(torrent));
+    }
+    // TODO: 从数据库中读取种子文件
     let add_torrent = AddTorrent::Url(item.read().await.link.clone().into());
     let session = StateLock::from_depot(&depot)?
         .read()
@@ -31,6 +35,17 @@ pub async fn get_item_torrent(
         .clone()
         .context("Session not initialized")?;
     Ok(ApiResponse::ok(
-        fetch_torrent_for_item(add_torrent, session, Vec::new(), item.weak()).await?,
+        fetch_torrent_for_item(
+            add_torrent,
+            session,
+            ConfigLock::from_depot(&depot)?
+                .read()
+                .await
+                .torrent_options
+                .trackers
+                .clone(),
+            item.weak(),
+        )
+        .await?,
     ))
 }

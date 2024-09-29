@@ -14,6 +14,7 @@ use tokio::sync::mpsc::Sender;
 #[derive(Deserialize)]
 struct ReqData {
     url: String,
+    auto_download: bool,
 }
 
 #[handler]
@@ -51,6 +52,7 @@ pub async fn add_rss_sub(depot: &mut Depot, req: &mut Request) -> Result<ApiResp
         update_time: SystemTime::now(),
         update_interval: Duration::from_secs(3600),
         status: RssStatus::Created,
+        auto_download: data.auto_download,
     };
 
     // 发送添加RSS的事件

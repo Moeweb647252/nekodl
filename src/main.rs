@@ -107,6 +107,7 @@ async fn main() -> anyhow::Result<()> {
         config.clone(),
         db.clone(),
         event_task_channel.0.clone(),
+        state.clone(),
         event_task_channel.1,
     ));
 

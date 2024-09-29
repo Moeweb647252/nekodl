@@ -1,9 +1,12 @@
-use crate::state::SerdeLockLayer;
-use anyhow::Result;
+use crate::state::{Config, SerdeLockLayer, State};
+use crate::torrent::fetch_torrent_for_item;
+use anyhow::{Context, Result};
+use librqbit::AddTorrent;
 use rss::Channel;
 use serde::{Deserialize, Serialize};
-use std::sync::Weak;
+use std::sync::{Arc, Weak};
 use tokio::sync::RwLock;
+use tokio::task::JoinHandle;
 use tokio::time::sleep;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -14,6 +17,8 @@ pub struct RssItem {
     pub status: RssItemStatus,
     pub torrent: Option<ItemTorrent>,
     pub id: usize,
+    #[serde(skip)]
+    pub download_handle: Option<Arc<JoinHandle<()>>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -39,6 +44,7 @@ pub enum RssItemStatus {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum RssStatus {
+    Read,
     Created,
     Updated,
     Error(String),
@@ -54,6 +60,7 @@ pub struct Rss {
     pub update_time: std::time::SystemTime,
     pub update_interval: std::time::Duration,
     pub status: RssStatus,
+    pub auto_download: bool,
 }
 
 impl Rss {
@@ -67,6 +74,7 @@ impl Rss {
             update_time: self.update_time,
             update_interval: self.update_interval,
             status: RssStatus::Created,
+            auto_download: self.auto_download,
         }
     }
 }
@@ -80,10 +88,14 @@ pub async fn fetch_channel(link: &str) -> Result<Channel> {
 // 定义一个异步函数rss_task，用于更新RSS源并发送更新事件
 // sender: 用于发送事件的通道
 // rss: 需要更新的RSS源
-pub async fn rss_task(rss_lock: Weak<RwLock<Rss>>) {
+pub async fn rss_task(
+    rss_lock: Weak<RwLock<Rss>>,
+    state: Arc<RwLock<State>>,
+    config: Arc<RwLock<Config>>,
+) {
     // 无限循环，持续检查并更新RSS源
     loop {
-        let mut rss = if let Some(lock) = rss_lock.upgrade() {
+        let rss = if let Some(lock) = rss_lock.upgrade() {
             lock.read().await.clone()
         } else {
             break;
@@ -107,8 +119,8 @@ pub async fn rss_task(rss_lock: Weak<RwLock<Rss>>) {
                 "Default Title".to_owned()
             };
             // 获取链接，如果没有链接则跳过该项
-            let link = if let Some(link) = item.1.link() {
-                link.to_string()
+            let link = if let Some(link) = &item.1.enclosure {
+                link.url.to_owned()
             } else {
                 continue;
             };
@@ -126,16 +138,56 @@ pub async fn rss_task(rss_lock: Weak<RwLock<Rss>>) {
                 status: RssItemStatus::Unread,
                 id: item.0,
                 torrent: None,
+                download_handle: None,
             });
         }
-        // 更新RSS源的项
-        rss.items = items.into_iter().map(|v| v.into()).collect();
-        // 更新RSS源的最后更新时间
-        rss.update_time = std::time::SystemTime::now();
-        // 设置RSS源的状态为已更新
-        rss.status = RssStatus::Updated;
+        for i in rss.items.iter() {
+            let tmp = i.read().await;
+            if let Some(pos) = items.iter().position(|x| tmp.comprare(x)) {
+                items.remove(pos);
+            }
+        }
+        let mut index = rss.items.len();
+        items.iter_mut().for_each(|v| {
+            v.id = index;
+            index += 1;
+        });
+
         if let Some(lock) = rss_lock.upgrade() {
-            *lock.write().await = rss;
+            {
+                let mut guard = lock.write().await;
+                guard.update_time = std::time::SystemTime::now();
+                for i in items {
+                    guard.items.push(i.into());
+                }
+                guard.status = RssStatus::Updated;
+            }
+            let guard = lock.read().await;
+            for i in guard.items.iter() {
+                let item = i.read().await.clone();
+                if let Some(torrent) = item.torrent {
+                    if rss.auto_download {}
+                } else {
+                    let weak = i.weak();
+                    let session = state
+                        .read()
+                        .await
+                        .rqbit_session
+                        .clone()
+                        .context("librqbit session not found")
+                        .unwrap();
+                    let trackers = config.read().await.torrent_options.trackers.clone();
+                    tokio::spawn(async move {
+                        fetch_torrent_for_item(
+                            AddTorrent::Url(item.link.into()),
+                            session,
+                            trackers,
+                            weak,
+                        )
+                        .await
+                    });
+                }
+            }
         } else {
             break;
         };
@@ -143,10 +195,8 @@ pub async fn rss_task(rss_lock: Weak<RwLock<Rss>>) {
 }
 
 impl RssItem {
-    pub fn comprare_rss_crate(self, item: &rss::Item) -> bool {
-        Some(self.title.as_str()) == item.title()
-            && Some(self.link.as_str()) == item.link()
-            && Some(self.description.as_str()) == item.description()
+    pub fn comprare(&self, item: &Self) -> bool {
+        self.title == item.title
     }
 }
 
@@ -161,7 +211,7 @@ mod test {
             fetch_channel("https://mikanani.me/RSS/Bangumi?bangumiId=3367&subgroupid=611")
                 .await
                 .unwrap()
-                .items()
+                .items()[0]
         );
     }
 

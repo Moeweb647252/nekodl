@@ -11,7 +11,7 @@ use tracing::{error, info};
 
 use crate::{
     rss::{rss_task, Rss},
-    state::{Config, DataBase, SerdeLockLayer},
+    state::{Config, DataBase, SerdeLockLayer, State},
 };
 
 #[derive(Debug, Clone)]
@@ -32,6 +32,7 @@ pub async fn event_handle_task(
     config: Arc<RwLock<Config>>,
     db: Arc<RwLock<DataBase>>,
     sender: Sender<Event>,
+    state: Arc<RwLock<State>>,
     mut receiver: Receiver<Event>,
 ) {
     use Event::*;
@@ -40,7 +41,7 @@ pub async fn event_handle_task(
     //let mut jobset = tokio::task::JoinSet::new();
     // 遍历数据库中的RSS列表，并为每个RSS源创建一个异步任务。
     for rss in db.write().await.rss_list.iter() {
-        let handle = tokio::spawn(rss_task(rss.1.weak()));
+        let handle = tokio::spawn(rss_task(rss.1.weak(), state.clone(), config.clone()));
         rss_task_pool.insert(rss.0.clone(), handle);
     }
     // 循环接收事件，并根据事件类型执行相应的操作。
@@ -53,7 +54,7 @@ pub async fn event_handle_task(
                 let id = rss.id;
                 let lock = SerdeLockLayer::new(rss);
                 // 为新RSS源创建异步任务。
-                let handle = tokio::spawn(rss_task(lock.weak()));
+                let handle = tokio::spawn(rss_task(lock.weak(), state.clone(), config.clone()));
                 // 将新任务添加到任务池。
                 rss_task_pool.insert(id, handle);
                 // 将新RSS源添加到数据库。

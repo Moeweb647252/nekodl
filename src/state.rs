@@ -18,6 +18,7 @@ pub struct Config {
     pub db_path: String,
     pub session_path: String,
     pub torrent_options: TorrentOptions,
+    pub output_path: String,
 }
 
 impl Config {
@@ -54,6 +55,7 @@ impl Default for Config {
             torrent_options: TorrentOptions {
                 trackers: Vec::new(),
             },
+            output_path: "./downloads".to_owned(),
         }
     }
 }

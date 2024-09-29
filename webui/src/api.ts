@@ -67,7 +67,7 @@ export class Api {
     return await this.reqBase("get_rss_info", { id: id });
   }
 
-  async get_torrent_info()
+  async get_torrent_info() {}
 
   async authorize(): Promise<ApiResponse> {
     return await this.reqBase("auth", {}, "get");
