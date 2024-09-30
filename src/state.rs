@@ -6,10 +6,12 @@ use std::{fs::read_to_string, path::PathBuf, sync::Arc, time::Duration};
 use tokio::sync::{RwLockReadGuard, RwLockWriteGuard};
 use tokio::{fs::write, sync::RwLock, time::sleep};
 use tracing::info;
+use ts_rs::TS;
 
 use crate::{download::DownloadTask, rss::Rss};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct Config {
     pub bind_address: String,
     pub password: String,
@@ -66,7 +68,7 @@ pub struct State {
     pub rqbit_session: Option<Arc<librqbit::Session>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct TorrentOptions {
     pub trackers: Vec<String>,
 }

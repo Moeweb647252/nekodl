@@ -11,8 +11,8 @@ use crate::{
 };
 
 mod auth;
+mod config;
 mod download;
-
 mod login;
 mod rss;
 
@@ -121,7 +121,8 @@ impl Writer for Error {
                 Code::ServerError,
                 Option::<()>::None,
                 self.inner.to_string().as_str(),
-            )).unwrap_or_else(|err| {
+            ))
+            .unwrap_or_else(|err| {
                 #[cfg(debug_assertions)]
                 error!("{}", err);
                 "Error".to_owned()

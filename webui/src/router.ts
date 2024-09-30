@@ -25,6 +25,11 @@ export const router = createRouter({
           path: "rss",
           component: () => import("./components/RssManager.vue"),
         },
+        {
+          name: "settings",
+          path: "settings",
+          component: () => import("./components/SettingsEditor.vue"),
+        },
       ],
       component: MainView,
     },

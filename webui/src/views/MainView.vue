@@ -29,6 +29,9 @@ onMounted(() => {
           >
           <a-divider style="margin: 0px"></a-divider>
           <a-menu-item key="2">下载进度</a-menu-item>
+          <a-menu-item key="3">
+            <router-link to="/settings">设置</router-link>
+          </a-menu-item>
         </a-menu>
       </a-layout-sider>
       <a-layout-content :style="{ padding: 0, margin: '0px 16px' }">
