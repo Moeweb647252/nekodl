@@ -1,3 +1,4 @@
+use crate::download::item_downaload_task;
 use crate::state::{Config, SerdeLockLayer, State};
 use crate::torrent::fetch_torrent_for_item;
 use anyhow::{Context, Result};
@@ -18,7 +19,7 @@ pub struct RssItem {
     pub torrent: Option<ItemTorrent>,
     pub id: usize,
     #[serde(skip)]
-    pub download_handle: Option<Arc<JoinHandle<()>>>,
+    pub download_handle: Option<Arc<JoinHandle<Result<()>>>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -34,7 +35,7 @@ pub struct TorrentFileInfo {
     pub length: u64,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum RssItemStatus {
     Unread,
     Read,
@@ -163,24 +164,39 @@ pub async fn rss_task(
                 guard.status = RssStatus::Updated;
             }
             let guard = lock.read().await;
+            let session = state
+                .read()
+                .await
+                .rqbit_session
+                .clone()
+                .context("librqbit session not found")
+                .unwrap();
             for i in guard.items.iter() {
-                let item = i.read().await.clone();
-                if let Some(torrent) = item.torrent {
-                    if rss.auto_download {}
+                let session = session.clone();
+                let mut item = i.write().await;
+                if item.torrent.is_some() {
+                    if rss.auto_download {
+                        if item.download_handle.is_none()
+                            && item.status != RssItemStatus::Downloaded
+                        {
+                            let handle = tokio::spawn(item_downaload_task(
+                                session.clone(),
+                                i.weak(),
+                                rss.title.clone(),
+                                config.clone(),
+                            ));
+                            item.status = RssItemStatus::Downloading;
+                            item.download_handle = Some(Arc::new(handle));
+                        }
+                    }
                 } else {
                     let weak = i.weak();
-                    let session = state
-                        .read()
-                        .await
-                        .rqbit_session
-                        .clone()
-                        .context("librqbit session not found")
-                        .unwrap();
                     let trackers = config.read().await.torrent_options.trackers.clone();
+                    let link = item.link.clone();
                     tokio::spawn(async move {
                         fetch_torrent_for_item(
-                            AddTorrent::Url(item.link.into()),
-                            session,
+                            AddTorrent::Url(link.into()),
+                            session.clone(),
                             trackers,
                             weak,
                         )

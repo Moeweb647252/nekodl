@@ -1,7 +1,11 @@
-use std::{path::PathBuf, rc::Weak, sync::Arc, time::Duration};
+use std::{
+    path::PathBuf,
+    sync::{Arc, Weak},
+    time::Duration,
+};
 
 use anyhow::{Context, Ok};
-use librqbit::{self, AddTorrent, AddTorrentOptions, Session};
+use librqbit::{self, AddTorrent, AddTorrentOptions, ManagedTorrent, Session};
 use salvo::hyper::body::Bytes;
 use serde::{Deserialize, Serialize};
 use tokio::{
@@ -15,7 +19,7 @@ use crate::{
 };
 
 pub enum Command {
-    AddTorrentFile(Vec<u8>, oneshot::Sender<usize>),
+    AddTorrentFile(Vec<u8>, oneshot::Sender<Arc<ManagedTorrent>>),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -41,7 +45,7 @@ pub async fn download_command_task(
                     )
                     .await?;
                 let handle = resp.into_handle().unwrap();
-                tx.send(handle.id()).ok();
+                tx.send(handle).ok();
             }
         }
     }
