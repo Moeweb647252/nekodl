@@ -1,4 +1,4 @@
-use crate::download::item_downaload_task;
+//use crate::download::item_downaload_task;
 use crate::state::{Config, SerdeLockLayer, State};
 use crate::torrent::fetch_torrent_for_item;
 use anyhow::{Context, Result};
@@ -179,14 +179,14 @@ pub async fn rss_task(
                         if item.download_handle.is_none()
                             && item.status != RssItemStatus::Downloaded
                         {
-                            let handle = tokio::spawn(item_downaload_task(
+                            /*let handle = tokio::spawn(item_downaload_task(
                                 session.clone(),
                                 i.weak(),
                                 rss.title.clone(),
                                 config.clone(),
                             ));
                             item.status = RssItemStatus::Downloading;
-                            item.download_handle = Some(Arc::new(handle));
+                            item.download_handle = Some(Arc::new(handle));*/
                         }
                     }
                 } else {

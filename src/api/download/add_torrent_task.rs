@@ -1,4 +1,4 @@
-use crate::download::Command;
+//use crate::download::Command;
 
 use crate::api::*;
 use crate::utils::FromDepot;

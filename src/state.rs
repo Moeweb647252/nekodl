@@ -8,7 +8,9 @@ use tokio::{fs::write, sync::RwLock, time::sleep};
 use tracing::info;
 use ts_rs::TS;
 
-use crate::{download::DownloadTask, rss::Rss};
+use crate::rss::Rss;
+
+//use crate::{download::DownloadTask, rss::Rss};
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
@@ -177,7 +179,7 @@ where
 pub struct DataBase {
     pub rss_list: HashMap<usize, SerdeLockLayer<Rss>>,
     pub rss_id_index: usize,
-    pub download_task_list: Vec<DownloadTask>,
+    //pub download_task_list: Vec<DownloadTask>,
 }
 
 impl DataBase {

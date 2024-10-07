@@ -1,8 +1,19 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import { Config } from "../bindings/Config";
+import { api } from "../api";
+import { errNotif } from "../utils";
 
 const settings = ref<Config>();
+
+onMounted(() => {
+  api
+    .get_config()
+    .then((config) => {
+      settings.value = config.data;
+    })
+    .catch(errNotif);
+});
 </script>
 
 <template>

@@ -69,6 +69,10 @@ export class Api {
 
   async get_torrent_info() {}
 
+  async get_config(): Promise<ApiResponse> {
+    return await this.reqBase("get_config", {});
+  }
+
   async authorize(): Promise<ApiResponse> {
     return await this.reqBase("auth", {}, "get");
   }

@@ -15,7 +15,7 @@ use tracing_subscriber::EnvFilter;
 use utils::{rand_str, sha256};
 
 mod api;
-mod download;
+mod downloader;
 mod event;
 mod rss;
 mod state;
@@ -72,7 +72,7 @@ async fn main() -> anyhow::Result<()> {
                 let db = DataBase {
                     rss_id_index: 0,
                     rss_list: HashMap::new(),
-                    download_task_list: Vec::new(),
+                    //download_task_list: Vec::new(),
                 };
                 let data = bincode::serialize(&db)?;
                 write(config.db_path.as_str(), data).await?; // 将新的数据库实例写入文件
@@ -111,12 +111,12 @@ async fn main() -> anyhow::Result<()> {
         event_task_channel.1,
     ));
 
-    let download_task_channel = mpsc::channel(1000);
-    tokio::spawn(download::download_command_task(
+    //let download_task_channel = mpsc::channel(1000);
+    /*tokio::spawn(download::download_command_task(
         download_task_channel.1,
         state.clone(),
         config.clone(),
-    ));
+    ));*/
 
     // 创建 TCP 监听器
     let sock = TcpListener::new("[::]:8001").bind().await;
@@ -124,7 +124,7 @@ async fn main() -> anyhow::Result<()> {
     // 创建路由器并添加中间件和路由
     let router = Router::new()
         .hoop(affix_state::inject(event_task_channel.0))
-        .hoop(affix_state::inject(download_task_channel.0))
+        //.hoop(affix_state::inject(download_task_channel.0))
         .hoop(affix_state::inject(config))
         .hoop(affix_state::inject(state))
         .hoop(affix_state::inject(db))

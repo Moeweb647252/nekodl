@@ -4,7 +4,7 @@ use std::{
     time::Duration,
 };
 
-use anyhow::{Context, Ok};
+use anyhow::{anyhow, Context, Ok};
 use librqbit::{self, AddTorrent, AddTorrentOptions, ManagedTorrent, Session};
 use salvo::hyper::body::Bytes;
 use serde::{Deserialize, Serialize};
@@ -17,6 +17,8 @@ use crate::{
     rss::{RssItem, RssItemStatus},
     state::{Config, State},
 };
+
+use super::{DownloadOptions, Downloader, Source};
 
 pub enum Command {
     AddTorrentFile(Vec<u8>, oneshot::Sender<Arc<ManagedTorrent>>),
@@ -95,4 +97,34 @@ pub async fn item_downaload_task(
         }
     };
     Ok(())
+}
+
+pub struct Rqbit {
+    session: Arc<Session>,
+}
+
+impl Downloader for Rqbit {
+    async fn add_download_task(
+        &self,
+        source: super::Source,
+        options: DownloadOptions,
+    ) -> anyhow::Result<Arc<dyn super::DownloadHandle>> {
+        use Source::*;
+        match source {
+            HttpUrl(url) => {
+                return Err(anyhow!("Not implemented"));
+            }
+            MagnetLink(magnet_link) => {
+                let add_torrent = AddTorrent::from_url(magnet_link);
+                let resp = self.session.add_torrent(
+                    add_torrent,
+                    Some(AddTorrentOptions {
+                        ..Default::default()
+                    }),
+                );
+
+                todo!()
+            }
+        }
+    }
 }
