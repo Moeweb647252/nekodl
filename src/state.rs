@@ -8,6 +8,7 @@ use tokio::{fs::write, sync::RwLock, time::sleep};
 use tracing::info;
 use ts_rs::TS;
 
+use crate::downloader::Downloader;
 use crate::rss::Rss;
 
 //use crate::{download::DownloadTask, rss::Rss};
@@ -67,7 +68,7 @@ impl Default for Config {
 #[derive(Clone)]
 pub struct State {
     pub token: Option<String>,
-    pub rqbit_session: Option<Arc<librqbit::Session>>,
+    pub downloader: Arc<dyn Downloader>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]

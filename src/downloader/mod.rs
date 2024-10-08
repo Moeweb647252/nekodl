@@ -1,4 +1,5 @@
 use anyhow::Result;
+use salvo::async_trait;
 use std::sync::Arc;
 
 mod rqbit;
@@ -9,7 +10,7 @@ pub enum Source {
     TorrentFile(Vec<u8>),
 }
 
-pub trait DownloadHandle {
+pub trait DownloadHandle: Sync + Send {
     fn id(&self) -> usize;
 }
 
@@ -20,7 +21,8 @@ pub enum DownloadOptions {
     Torrent { trackers: Vec<String> },
 }
 
-pub trait Downloader {
+#[async_trait]
+pub trait Downloader: Send + Sync {
     async fn add_download_task(
         &self,
         source: Source,

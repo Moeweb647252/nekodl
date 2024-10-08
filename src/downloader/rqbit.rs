@@ -6,7 +6,7 @@ use std::{
 
 use anyhow::{anyhow, Context, Ok};
 use librqbit::{self, AddTorrent, AddTorrentOptions, ManagedTorrent, Session};
-use salvo::hyper::body::Bytes;
+use salvo::{async_trait, hyper::body::Bytes};
 use serde::{Deserialize, Serialize};
 use tokio::{
     sync::{mpsc, oneshot, RwLock},
@@ -103,6 +103,7 @@ pub struct Rqbit {
     session: Arc<Session>,
 }
 
+#[async_trait]
 impl Downloader for Rqbit {
     async fn add_download_task(
         &self,
@@ -125,6 +126,37 @@ impl Downloader for Rqbit {
 
                 todo!()
             }
+            TorrentFile(bytes) => {
+                todo!()
+            }
         }
+    }
+
+    async fn cancel_download_task(
+        &self,
+        handle: Arc<dyn super::DownloadHandle>,
+    ) -> anyhow::Result<()> {
+        todo!()
+    }
+
+    async fn get_download_task_status(
+        &self,
+        handle: Arc<dyn super::DownloadHandle>,
+    ) -> anyhow::Result<Box<dyn super::DownloadStatus>> {
+        todo!()
+    }
+
+    async fn pause_download_task(
+        &self,
+        handle: Arc<dyn super::DownloadHandle>,
+    ) -> anyhow::Result<()> {
+        todo!()
+    }
+
+    async fn resume_download_task(
+        &self,
+        handle: Arc<dyn super::DownloadHandle>,
+    ) -> anyhow::Result<()> {
+        todo!()
     }
 }
